@@ -3,6 +3,7 @@ import 'dotenv/config';
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 import http from 'http';
+import mongoose from 'mongoose';
 import Anthropic from '@anthropic-ai/sdk';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,6 +33,7 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
+let isShuttingDown = false;
 
 if (anthropicApiKey) {
   new Anthropic({ apiKey: anthropicApiKey });
@@ -72,32 +74,48 @@ io.on('connection', (socket) => {
 });
 
 const shutdown = async () => {
-  await io.close();
-  await closeAssignmentGenerationQueue();
-  await closeRedisClient();
-  const mongoose = await import('mongoose');
-  await mongoose.default.disconnect();
-  server.close(() => {
-    process.exit(0);
-  });
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
+  try {
+    const cleanupResults = await Promise.allSettled([
+      io.close(),
+      closeAssignmentGenerationQueue(),
+      closeRedisClient(),
+      mongoose.disconnect()
+    ]);
+
+    for (const result of cleanupResults) {
+      if (result.status === 'rejected') {
+        console.error('Shutdown cleanup failed:', result.reason);
+      }
+    }
+  } finally {
+    server.close(() => {
+      process.exit(0);
+    });
+  }
 };
 
 const start = async () => {
   try {
     await connectDatabase();
+    if (process.env.REDIS_URL) {
+      getRedisClient();
+      getAssignmentGenerationQueue();
+    }
+
+    server.listen(port, () => {
+      console.log(`Backend listening on http://localhost:${port}`);
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown database error';
-    console.error('MongoDB connection error:', message);
+    const message = error instanceof Error ? error.message : 'Unknown startup error';
+    console.error('Backend startup failed:', message);
+    process.exit(1);
   }
-
-  if (process.env.REDIS_URL) {
-    getRedisClient();
-    getAssignmentGenerationQueue();
-  }
-
-  server.listen(port, () => {
-    console.log(`Backend listening on http://localhost:${port}`);
-  });
 };
 
 process.on('SIGINT', () => {
