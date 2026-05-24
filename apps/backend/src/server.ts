@@ -4,17 +4,17 @@ import cors from 'cors';
 import express, { Request, Response } from 'express';
 import http from 'http';
 import mongoose from 'mongoose';
-import Redis from 'ioredis';
-import { Queue } from 'bullmq';
 import Anthropic from '@anthropic-ai/sdk';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 
+import { connectDatabase } from './config/database';
+import { closeAssignmentGenerationQueue, getAssignmentGenerationQueue } from './config/bullmq';
+import { closeRedisClient, getRedisClient } from './config/redis';
+
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
-const mongoUri = process.env.MONGODB_URI;
-const redisUrl = process.env.REDIS_URL;
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 const serverId = uuidv4();
 
@@ -33,28 +33,7 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
-
-let redisClient: Redis | null = null;
-let taskQueue: Queue | null = null;
-let redisConnection: { host: string; port: number } | null = null;
-
-if (mongoUri) {
-  void mongoose.connect(mongoUri).catch((error) => {
-    console.error('MongoDB connection error:', error.message);
-  });
-}
-
-if (redisUrl) {
-  redisClient = new Redis(redisUrl);
-  const parsedRedisUrl = new URL(redisUrl);
-  redisConnection = {
-    host: parsedRedisUrl.hostname,
-    port: Number(parsedRedisUrl.port || 6379)
-  };
-  taskQueue = new Queue('vedaai-tasks', {
-    connection: redisConnection
-  });
-}
+let isShuttingDown = false;
 
 if (anthropicApiKey) {
   new Anthropic({ apiKey: anthropicApiKey });
@@ -94,18 +73,49 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`);
-});
-
 const shutdown = async () => {
-  await io.close();
-  await mongoose.disconnect();
-  await taskQueue?.close();
-  redisClient?.disconnect();
-  server.close(() => {
-    process.exit(0);
-  });
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
+  try {
+    const cleanupResults = await Promise.allSettled([
+      io.close(),
+      closeAssignmentGenerationQueue(),
+      closeRedisClient(),
+      mongoose.disconnect()
+    ]);
+
+    for (const result of cleanupResults) {
+      if (result.status === 'rejected') {
+        console.error('Shutdown cleanup failed:', result.reason);
+      }
+    }
+  } finally {
+    server.close(() => {
+      process.exit(0);
+    });
+  }
+};
+
+const start = async () => {
+  try {
+    await connectDatabase();
+    if (process.env.REDIS_URL) {
+      getRedisClient();
+      getAssignmentGenerationQueue();
+    }
+
+    server.listen(port, () => {
+      console.log(`Backend listening on http://localhost:${port}`);
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown startup error';
+    console.error('Backend startup failed:', message);
+    process.exit(1);
+  }
 };
 
 process.on('SIGINT', () => {
@@ -115,3 +125,5 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   void shutdown();
 });
+
+void start();
