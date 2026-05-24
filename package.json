@@ -1,0 +1,11 @@
+{
+  "name": "vedaai-assessment",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:backend": "cd apps/backend && npm run dev"
+  }
+}
