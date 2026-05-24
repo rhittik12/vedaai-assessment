@@ -3,18 +3,17 @@ import 'dotenv/config';
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 import http from 'http';
-import mongoose from 'mongoose';
-import Redis from 'ioredis';
-import { Queue } from 'bullmq';
 import Anthropic from '@anthropic-ai/sdk';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 
+import { connectDatabase } from './config/database';
+import { closeAssignmentGenerationQueue, getAssignmentGenerationQueue } from './config/bullmq';
+import { closeRedisClient, getRedisClient } from './config/redis';
+
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
-const mongoUri = process.env.MONGODB_URI;
-const redisUrl = process.env.REDIS_URL;
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 const serverId = uuidv4();
 
@@ -33,28 +32,6 @@ const io = new Server(server, {
     methods: ['GET', 'POST']
   }
 });
-
-let redisClient: Redis | null = null;
-let taskQueue: Queue | null = null;
-let redisConnection: { host: string; port: number } | null = null;
-
-if (mongoUri) {
-  void mongoose.connect(mongoUri).catch((error) => {
-    console.error('MongoDB connection error:', error.message);
-  });
-}
-
-if (redisUrl) {
-  redisClient = new Redis(redisUrl);
-  const parsedRedisUrl = new URL(redisUrl);
-  redisConnection = {
-    host: parsedRedisUrl.hostname,
-    port: Number(parsedRedisUrl.port || 6379)
-  };
-  taskQueue = new Queue('vedaai-tasks', {
-    connection: redisConnection
-  });
-}
 
 if (anthropicApiKey) {
   new Anthropic({ apiKey: anthropicApiKey });
@@ -94,17 +71,32 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`);
-});
-
 const shutdown = async () => {
   await io.close();
-  await mongoose.disconnect();
-  await taskQueue?.close();
-  redisClient?.disconnect();
+  await closeAssignmentGenerationQueue();
+  await closeRedisClient();
+  const mongoose = await import('mongoose');
+  await mongoose.default.disconnect();
   server.close(() => {
     process.exit(0);
+  });
+};
+
+const start = async () => {
+  try {
+    await connectDatabase();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown database error';
+    console.error('MongoDB connection error:', message);
+  }
+
+  if (process.env.REDIS_URL) {
+    getRedisClient();
+    getAssignmentGenerationQueue();
+  }
+
+  server.listen(port, () => {
+    console.log(`Backend listening on http://localhost:${port}`);
   });
 };
 
@@ -115,3 +107,5 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   void shutdown();
 });
+
+void start();
