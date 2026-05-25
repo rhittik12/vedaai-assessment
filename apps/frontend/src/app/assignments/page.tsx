@@ -55,7 +55,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <button
         type="button"
         onClick={onCreate}
-        className="mt-6 rounded-full bg-[#1A1A1A] px-5 py-3 text-sm font-semibold text-white transition hover:bg-black"
+        className="mt-6 rounded-full bg-white border border-gray-200 px-5 py-3 text-sm font-semibold text-[#1A1A1A] transition hover:bg-gray-50"
       >
         + Create Your First Assignment
       </button>
@@ -228,7 +228,7 @@ export default function AssignmentsPage() {
         <button
           type="button"
           onClick={handleCreate}
-          className="pointer-events-auto rounded-full bg-[#1A1A1A] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black"
+          className="pointer-events-auto rounded-full bg-white border border-gray-200 px-6 py-3 text-sm font-semibold text-[#1A1A1A] shadow-sm transition hover:bg-gray-50"
         >
           + Create Assignment
         </button>
