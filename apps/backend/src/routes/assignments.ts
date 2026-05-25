@@ -191,27 +191,50 @@ router.post('/:id/regenerate', async (request: Request, response: Response, next
       fileBuffer: sourceAssignment.fileBuffer
     });
 
-    const queue = getAssignmentGenerationQueue();
-    const job = await queue.add('generate-assignment', {
-      assignmentId,
-      dueDate: assignment.dueDate,
-      questionTypes: assignment.questionTypes,
-      additionalInfo: assignment.additionalInfo,
-      totalQuestions: assignment.totalQuestions,
-      totalMarks: assignment.totalMarks,
-      fileName: assignment.fileName
-    });
+    let jobId: string | null = null;
 
-    assignment.jobId = String(job.id);
-    await assignment.save();
+    try {
+      const queue = getAssignmentGenerationQueue();
+      const job = await queue.add('generate-assignment', {
+        assignmentId,
+        dueDate: assignment.dueDate,
+        questionTypes: assignment.questionTypes,
+        additionalInfo: assignment.additionalInfo,
+        totalQuestions: assignment.totalQuestions,
+        totalMarks: assignment.totalMarks,
+        fileName: assignment.fileName
+      });
 
-    await Assignment.deleteOne({ id: request.params.id });
+      jobId = String(job.id);
+      assignment.jobId = jobId;
+      await assignment.save();
 
-    response.status(201).json({
-      assignmentId,
-      jobId: String(job.id),
-      status: assignment.status
-    });
+      response.status(201).json({
+        assignmentId,
+        jobId,
+        status: assignment.status
+      });
+    } catch (regenerateError) {
+      if (jobId) {
+        try {
+          const queue = getAssignmentGenerationQueue();
+          const job = await queue.getJob(jobId);
+          if (job) {
+            await job.remove();
+          }
+        } catch {
+          // Best effort cleanup.
+        }
+      }
+
+      try {
+        await Assignment.deleteOne({ id: assignmentId });
+      } catch {
+        // Best effort cleanup.
+      }
+
+      throw regenerateError;
+    }
   } catch (error) {
     next(error);
   }
