@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import { loadBackendEnv } from './config/loadEnv';
+
+loadBackendEnv();
 
 import http from 'http';
 import mongoose from 'mongoose';

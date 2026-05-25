@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import { loadBackendEnv } from './loadEnv';
+
+loadBackendEnv();
 
 function requireClientUrl(): string {
   const clientUrl = process.env.CLIENT_URL?.trim();

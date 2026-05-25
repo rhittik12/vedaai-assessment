@@ -104,7 +104,9 @@ router.post('/', upload.single('file'), async (request: Request, response: Respo
       totalQuestions,
       totalMarks,
       status: 'pending',
-      fileName: request.file?.originalname
+      fileName: request.file?.originalname,
+      fileMimeType: request.file?.mimetype,
+      fileBuffer: request.file?.buffer
     });
 
     try {
@@ -158,6 +160,81 @@ router.get('/:id', async (request: Request, response: Response, next: NextFuncti
     }
 
     response.json(assignment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:id/regenerate', async (request: Request, response: Response, next: NextFunction) => {
+  try {
+    const sourceAssignment = await Assignment.findOne({ id: request.params.id }).select('+fileMimeType +fileBuffer');
+
+    if (!sourceAssignment) {
+      throw createHttpError('Assignment not found', 404);
+    }
+
+    if (!sourceAssignment.fileBuffer) {
+      throw createHttpError('Original file is not available for regeneration', 400);
+    }
+
+    const assignmentId = uuidv4();
+    const assignment = await Assignment.create({
+      id: assignmentId,
+      dueDate: sourceAssignment.dueDate,
+      questionTypes: sourceAssignment.questionTypes,
+      additionalInfo: sourceAssignment.additionalInfo,
+      totalQuestions: sourceAssignment.totalQuestions,
+      totalMarks: sourceAssignment.totalMarks,
+      status: 'pending',
+      fileName: sourceAssignment.fileName,
+      fileMimeType: sourceAssignment.fileMimeType,
+      fileBuffer: sourceAssignment.fileBuffer
+    });
+
+    let jobId: string | null = null;
+
+    try {
+      const queue = getAssignmentGenerationQueue();
+      const job = await queue.add('generate-assignment', {
+        assignmentId,
+        dueDate: assignment.dueDate,
+        questionTypes: assignment.questionTypes,
+        additionalInfo: assignment.additionalInfo,
+        totalQuestions: assignment.totalQuestions,
+        totalMarks: assignment.totalMarks,
+        fileName: assignment.fileName
+      });
+
+      jobId = String(job.id);
+      assignment.jobId = jobId;
+      await assignment.save();
+
+      response.status(201).json({
+        assignmentId,
+        jobId,
+        status: assignment.status
+      });
+    } catch (regenerateError) {
+      if (jobId) {
+        try {
+          const queue = getAssignmentGenerationQueue();
+          const job = await queue.getJob(jobId);
+          if (job) {
+            await job.remove();
+          }
+        } catch {
+          // Best effort cleanup.
+        }
+      }
+
+      try {
+        await Assignment.deleteOne({ id: assignmentId });
+      } catch {
+        // Best effort cleanup.
+      }
+
+      throw regenerateError;
+    }
   } catch (error) {
     next(error);
   }
