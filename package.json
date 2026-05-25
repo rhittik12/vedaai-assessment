@@ -7,5 +7,8 @@
   "scripts": {
     "dev:frontend": "cd apps/frontend && npm run dev",
     "dev:backend": "cd apps/backend && npm run dev"
+  },
+  "devDependencies": {
+    "@types/multer": "^2.1.0"
   }
 }
