@@ -107,19 +107,25 @@ router.post('/', upload.single('file'), async (request: Request, response: Respo
       fileName: request.file?.originalname
     });
 
-    const queue = getAssignmentGenerationQueue();
-    const job = await queue.add('generate-assignment', {
-      assignmentId
-    });
+    try {
+      const queue = getAssignmentGenerationQueue();
+      const job = await queue.add('generate-assignment', {
+        assignmentId
+      });
 
-    assignment.jobId = String(job.id);
-    await assignment.save();
+      assignment.jobId = String(job.id);
+      await assignment.save();
 
-    response.status(201).json({
-      assignmentId,
-      jobId: String(job.id),
-      status: assignment.status
-    });
+      response.status(201).json({
+        assignmentId,
+        jobId: String(job.id),
+        status: assignment.status
+      });
+    } catch (enqueueError) {
+      assignment.status = 'failed';
+      await assignment.save();
+      throw enqueueError;
+    }
   } catch (error) {
     next(error);
   }

@@ -9,6 +9,11 @@ export function errorHandler(error: unknown, _request: Request, response: Respon
     return;
   }
 
+  if (!(error instanceof Error)) {
+    response.status(500).json({ message: 'Internal server error' });
+    return;
+  }
+
   const httpError = error as HttpError;
   const statusCode = httpError.status ?? 500;
   const message = httpError.message || 'Internal server error';

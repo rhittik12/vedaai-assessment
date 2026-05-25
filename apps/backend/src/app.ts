@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 
+import { clientUrl } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
 import routes from './routes';
 
@@ -8,7 +9,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL
+    origin: clientUrl
   })
 );
 app.use(express.json());

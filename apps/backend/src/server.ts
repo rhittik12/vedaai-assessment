@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 
 import app from './app';
 import { connectDatabase } from './config/database';
+import { clientUrl } from './config/env';
 import { closeAssignmentGenerationQueue, getAssignmentGenerationQueue } from './config/bullmq';
 import { closeRedisClient, getRedisClient } from './config/redis';
 
@@ -13,7 +14,7 @@ const port = Number(process.env.PORT ?? 4000);
 const server = http.createServer(app);
 export const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: clientUrl,
     methods: ['GET', 'POST']
   }
 });
