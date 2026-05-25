@@ -142,8 +142,8 @@ function buildPrompt(jobData: AssignmentGenerationJobData): string {
   ].join('\n');
 }
 
-async function generatePaperWithClaude(jobData: AssignmentGenerationJobData): Promise<IGeneratedPaper> {
-  // OpenAI implementation
+async function generatePaperWithOpenAI(jobData: AssignmentGenerationJobData): Promise<IGeneratedPaper> {
+  // Implementation uses OpenAI (not Claude/Anthropic)
   const apiKey = process.env.OPENAI_API_KEY?.trim();
 
   if (!apiKey) {
@@ -222,7 +222,7 @@ export function createGenerationWorker(io: SocketIOServer) {
 
         io.emit('job:processing', { assignmentId });
 
-        const generatedPaper = await generatePaperWithClaude(job.data);
+        const generatedPaper = await generatePaperWithOpenAI(job.data);
 
         assignment.result = generatedPaper;
         assignment.status = 'completed';
