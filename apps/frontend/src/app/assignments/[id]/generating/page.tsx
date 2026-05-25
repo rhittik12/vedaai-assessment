@@ -44,7 +44,8 @@ export default function GeneratingPage() {
   const updateJobStatus = useAppStore((state) => state.updateJobStatus);
   const [assignment, setAssignment] = useState<AssignmentResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
   const currentStatus = assignment?.status ?? jobStatus ?? 'pending';
@@ -60,7 +61,7 @@ export default function GeneratingPage() {
         if (!mounted) return;
 
         setAssignment(response.data);
-        setError(null);
+        setLoadError(null);
 
         if (response.data.status) {
           updateJobStatus(assignmentId, response.data.status);
@@ -71,11 +72,13 @@ export default function GeneratingPage() {
         }
 
         if (response.data.status === 'failed') {
-          setError('Generation failed. You can retry or check the assignment details.');
+          setGenerationError('Generation failed. You can retry or check the assignment details.');
+        } else {
+          setGenerationError(null);
         }
       } catch {
         if (mounted) {
-          setError('Unable to load generation status.');
+          setLoadError('Unable to refresh generation status right now. We will keep trying in the background.');
         }
       } finally {
         if (mounted) setLoading(false);
@@ -112,7 +115,8 @@ export default function GeneratingPage() {
     const handleFailed = (payload: { assignmentId: string; error?: string }) => {
       if (payload.assignmentId === assignmentId) {
         updateJobStatus(assignmentId, 'failed');
-        setError(payload.error ?? 'Generation failed.');
+        setGenerationError(payload.error ?? 'Generation failed.');
+        setLoadError(null);
       }
     };
 
@@ -129,7 +133,8 @@ export default function GeneratingPage() {
 
   const handleRetry = async () => {
     setRetrying(true);
-    setError(null);
+    setGenerationError(null);
+    setLoadError(null);
     try {
       const response = await axios.post<{ assignmentId: string; jobId: string; status: AssignmentResponse['status'] }>(
         `${apiUrl}/api/assignments/${assignmentId}/retry`
@@ -137,7 +142,7 @@ export default function GeneratingPage() {
       setAssignment(response.data);
       updateJobStatus(assignmentId, response.data.status ?? 'pending');
     } catch {
-      setError('Retry failed. Please try again in a moment.');
+      setGenerationError('Retry failed. Please try again in a moment.');
     } finally {
       setRetrying(false);
     }
@@ -192,10 +197,17 @@ export default function GeneratingPage() {
           </div>
         ) : null}
 
-        {error ? (
+        {loadError ? (
+          <div className="mt-8 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-left text-sm text-amber-800">
+            <div className="font-semibold">Status refresh delayed</div>
+            <div className="mt-1">{loadError}</div>
+          </div>
+        ) : null}
+
+        {generationError ? (
           <div className="mt-8 rounded-2xl border border-red-100 bg-red-50 p-4 text-left text-sm text-red-700">
             <div className="font-semibold">Generation paused</div>
-            <div className="mt-1">{error}</div>
+            <div className="mt-1">{generationError}</div>
             <button
               type="button"
               onClick={() => void handleRetry()}

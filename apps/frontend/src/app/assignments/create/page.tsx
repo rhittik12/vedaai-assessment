@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
@@ -74,6 +74,7 @@ export default function CreateAssignmentPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const {
     register,
@@ -117,6 +118,20 @@ export default function CreateAssignmentPage() {
     const f = ev.dataTransfer.files?.[0];
     if (f) onFileChange(f);
   }, [onFileChange]);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(selectedFile);
+    setPreviewUrl(nextPreviewUrl);
+
+    return () => {
+      URL.revokeObjectURL(nextPreviewUrl);
+    };
+  }, [selectedFile]);
 
   const onSubmit = async (data: FormValues) => {
     setSubmitting(true);
@@ -201,7 +216,9 @@ export default function CreateAssignmentPage() {
                   </div>
                 ) : (
                   <div className="flex w-full max-w-lg items-center gap-4">
-                    <img src={URL.createObjectURL(selectedFile)} alt="preview" className="h-20 w-20 rounded-md object-cover" />
+                    {previewUrl ? (
+                      <img src={previewUrl} alt="preview" className="h-20 w-20 rounded-md object-cover" />
+                    ) : null}
                     <div className="flex-1">
                       <div className="text-sm font-semibold text-[#1A1A1A]">{selectedFile.name}</div>
                       <div className="mt-1 text-xs text-[#6B7280]">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</div>

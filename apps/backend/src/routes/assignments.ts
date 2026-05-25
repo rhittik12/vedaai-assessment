@@ -185,10 +185,9 @@ router.post('/:id/retry', async (request: Request, response: Response, next: Nex
       throw createHttpError('Assignment not found', 404);
     }
 
-    assignment.status = 'pending';
-    assignment.jobId = undefined;
-    assignment.result = undefined;
-    await assignment.save();
+    if (assignment.status !== 'failed') {
+      throw createHttpError('Only failed assignments can be retried', 409);
+    }
 
     const queue = getAssignmentGenerationQueue();
     const job = await queue.add('generate-assignment', {
@@ -201,8 +200,16 @@ router.post('/:id/retry', async (request: Request, response: Response, next: Nex
       fileName: assignment.fileName
     });
 
+    assignment.status = 'pending';
     assignment.jobId = String(job.id);
-    await assignment.save();
+    assignment.result = undefined;
+
+    try {
+      await assignment.save();
+    } catch (saveError) {
+      await job.remove();
+      throw saveError;
+    }
 
     response.status(202).json({
       assignmentId: assignment.id,
