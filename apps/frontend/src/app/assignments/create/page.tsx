@@ -75,6 +75,7 @@ export default function CreateAssignmentPage() {
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -135,6 +136,7 @@ export default function CreateAssignmentPage() {
 
   const onSubmit = async (data: FormValues) => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
       const form = new FormData();
@@ -155,8 +157,11 @@ export default function CreateAssignmentPage() {
         router.push(`/assignments`);
       }
     } catch (err) {
-      // TODO: show toast or error UI
-      // console.error(err);
+      setSubmitError(
+        axios.isAxiosError(err)
+          ? err.response?.data?.message ?? 'Unable to create assignment. Please try again.'
+          : 'Unable to create assignment. Please try again.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -178,6 +183,12 @@ export default function CreateAssignmentPage() {
           <div className="h-2 w-full rounded-t-2xl bg-[#111827]"></div>
 
           <div className="p-6">
+            {submitError ? (
+              <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {submitError}
+              </div>
+            ) : null}
+
             <h2 className="text-lg font-semibold text-[#1A1A1A]">Assignment Details</h2>
             <p className="mt-1 text-sm text-[#6B7280]">Basic information about your assignment</p>
 
