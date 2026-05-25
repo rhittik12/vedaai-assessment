@@ -2,9 +2,12 @@ import OpenAI from 'openai';
 import { type Job, Worker } from 'bullmq';
 import type { Server as SocketIOServer } from 'socket.io';
 
+import { loadBackendEnv } from '../config/loadEnv';
 import { getRedisClient } from '../config/redis';
 import { Assignment } from '../models';
 import type { IGeneratedPaper } from '../models/GeneratedPaper';
+
+loadBackendEnv();
 
 type AssignmentQuestionType = {
   type:
@@ -26,6 +29,19 @@ type AssignmentGenerationJobData = {
   totalMarks: number;
   fileName?: string;
 };
+
+type SourceAttachment =
+  | {
+      type: 'input_file';
+      detail: 'low' | 'high';
+      file_data: string;
+      filename?: string;
+    }
+  | {
+      type: 'input_image';
+      detail: 'low' | 'high' | 'auto' | 'original';
+      image_url: string;
+    };
 
 const sectionTitles: Record<AssignmentQuestionType['type'], string> = {
   'Multiple Choice Questions': 'Section A',
@@ -100,7 +116,9 @@ function buildPrompt(jobData: AssignmentGenerationJobData): string {
 
   return [
     'You are an expert teacher creating a question paper for a school exam.',
-    'Generate a complete paper from the assignment requirements below.',
+    'Generate a complete paper from the assignment requirements below and the attached source file.',
+    'The uploaded file is the authoritative reference. Do not invent unrelated topics, chapters, or section content.',
+    'Use the source file to keep the paper grounded in the same subject matter, section categories, and visible structure.',
     '',
     'Requirements:',
     `- Assignment ID: ${jobData.assignmentId}`,
@@ -108,11 +126,15 @@ function buildPrompt(jobData: AssignmentGenerationJobData): string {
     `- Total questions: ${jobData.totalQuestions}`,
     `- Total marks: ${jobData.totalMarks}`,
     `- Additional info: ${additionalInfoSection}`,
+    `- Source file name: ${jobData.fileName ?? 'unknown'}`,
     '',
     'Question type breakdown grouped into sections:',
     questionTypesSummary,
     '',
     'Rules:',
+    '- Use the uploaded file to determine the actual subject focus, chapters, and category emphasis before writing questions.',
+    '- If the source file contains diagram, graph, table, or image-based prompts, keep those as diagram/graph-based questions instead of replacing them with generic text questions.',
+    '- Preserve the source paper’s section style and topic coverage as closely as possible while still generating fresh questions.',
     '- Use Section A for Multiple Choice Questions, Section B for Short Questions, Section C for Diagram/Graph-Based Questions, Section D for Numerical Problems, and Section E for Long Answer Questions.',
     '- Vary difficulty across the paper so that approximately 30% of questions are Easy, 40% are Moderate, and 30% are Challenging.',
     '- Keep question wording clear, academic, and appropriate for the assigned class level.',
@@ -147,7 +169,48 @@ function buildPrompt(jobData: AssignmentGenerationJobData): string {
   ].join('\n');
 }
 
-async function generatePaperWithOpenAI(jobData: AssignmentGenerationJobData): Promise<IGeneratedPaper> {
+function buildSourceAttachment(assignment: {
+  fileName?: string;
+  fileMimeType?: string | null;
+  fileBuffer?: Buffer | null;
+}): SourceAttachment[] {
+  const fileBuffer = assignment.fileBuffer;
+  const fileMimeType = assignment.fileMimeType?.trim();
+
+  if (!fileBuffer || !fileMimeType) {
+    return [];
+  }
+
+  const base64Data = fileBuffer.toString('base64');
+
+  if (fileMimeType.startsWith('image/')) {
+    return [
+      {
+        type: 'input_image',
+        detail: 'high',
+        image_url: `data:${fileMimeType};base64,${base64Data}`
+      }
+    ];
+  }
+
+  if (fileMimeType === 'application/pdf') {
+    return [
+      {
+        type: 'input_file',
+        detail: 'high',
+        file_data: base64Data,
+        filename: assignment.fileName
+      }
+    ];
+  }
+
+  return [];
+}
+
+async function generatePaperWithOpenAI(
+  jobData: AssignmentGenerationJobData,
+  assignment: { fileName?: string; fileMimeType?: string | null; fileBuffer?: Buffer | null }
+): Promise<IGeneratedPaper> {
   // Implementation uses OpenAI (not Claude/Anthropic)
   const apiKey = process.env.OPENAI_API_KEY?.trim();
 
@@ -157,51 +220,47 @@ async function generatePaperWithOpenAI(jobData: AssignmentGenerationJobData): Pr
 
   const client = new OpenAI({ apiKey });
   const prompt = buildPrompt(jobData);
+  const sourceAttachment = buildSourceAttachment(assignment);
+  const inputContent = [{ type: 'input_text', text: prompt }, ...sourceAttachment];
 
   try {
-    // Try Chat Completions (chat API)
-    const chatResp = await client.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 3000,
-      temperature: 0.7
+    const respResp = await client.responses.create({
+      model: 'gpt-4o',
+      input: [
+        {
+          role: 'user',
+          content: inputContent
+        }
+      ],
+      max_output_tokens: 3000,
+      temperature: 0.2
     } as any);
 
-    const textFromChat =
-      (Array.isArray((chatResp as any)?.choices) && (chatResp as any).choices[0]?.message?.content) ||
-      (chatResp as any)?.choices?.[0]?.delta?.content ||
+    const textFromResponse =
+      (typeof (respResp as any)?.output_text === 'string' && (respResp as any).output_text.trim()) ||
+      (Array.isArray((respResp as any)?.output) &&
+        (respResp as any).output
+          .flatMap((out: any) => {
+            if (typeof out?.content === 'string') {
+              return [out.content];
+            }
+
+            if (Array.isArray(out?.content)) {
+              return out.content
+                .map((contentItem: any) => contentItem?.text)
+                .filter((text: unknown): text is string => typeof text === 'string');
+            }
+
+            return [];
+          })
+          .join('\n')) ||
       '';
 
-    if (typeof textFromChat === 'string' && textFromChat.trim()) {
-      return parseGeneratedPaper(textFromChat);
-    }
-
-    // Fallback to Responses API
-    const respResp = await client.responses.create({
-      model: 'gpt-4',
-      input: prompt,
-      max_output_tokens: 3000,
-      temperature: 0.7
-    } as any);
-
-    let candidate = '';
-    if (Array.isArray((respResp as any)?.output)) {
-      for (const out of (respResp as any).output) {
-        if (typeof out?.content === 'string') {
-          candidate += out.content + '\n';
-        } else if (Array.isArray(out?.content)) {
-          for (const c of out.content) {
-            if (typeof c?.text === 'string') candidate += c.text + '\n';
-          }
-        }
-      }
-    }
-
-    if (!candidate.trim()) {
+    if (!textFromResponse.trim()) {
       throw createHttpError('OpenAI response did not contain text output');
     }
 
-    return parseGeneratedPaper(candidate);
+    return parseGeneratedPaper(textFromResponse);
   } catch (err: any) {
     const msg = err?.message || String(err);
     throw createHttpError(`OpenAI generation error: ${msg}`);
@@ -219,7 +278,7 @@ export function createGenerationWorker(io: SocketIOServer) {
           { id: assignmentId },
           { status: 'processing', jobId: String(job.id) },
           { new: true }
-        );
+        ).select('+fileMimeType +fileBuffer');
 
         if (!assignment) {
           throw createHttpError(`Assignment ${assignmentId} not found`);
@@ -227,7 +286,10 @@ export function createGenerationWorker(io: SocketIOServer) {
 
         io.emit('job:processing', { assignmentId });
 
-        const generatedPaper = await generatePaperWithOpenAI(job.data);
+        const generatedPaper = {
+          ...(await generatePaperWithOpenAI(job.data, assignment)),
+          assignmentId
+        };
 
         assignment.result = generatedPaper;
         assignment.status = 'completed';

@@ -165,6 +165,58 @@ router.get('/:id', async (request: Request, response: Response, next: NextFuncti
   }
 });
 
+router.post('/:id/regenerate', async (request: Request, response: Response, next: NextFunction) => {
+  try {
+    const sourceAssignment = await Assignment.findOne({ id: request.params.id }).select('+fileMimeType +fileBuffer');
+
+    if (!sourceAssignment) {
+      throw createHttpError('Assignment not found', 404);
+    }
+
+    if (!sourceAssignment.fileBuffer) {
+      throw createHttpError('Original file is not available for regeneration', 400);
+    }
+
+    const assignmentId = uuidv4();
+    const assignment = await Assignment.create({
+      id: assignmentId,
+      dueDate: sourceAssignment.dueDate,
+      questionTypes: sourceAssignment.questionTypes,
+      additionalInfo: sourceAssignment.additionalInfo,
+      totalQuestions: sourceAssignment.totalQuestions,
+      totalMarks: sourceAssignment.totalMarks,
+      status: 'pending',
+      fileName: sourceAssignment.fileName,
+      fileMimeType: sourceAssignment.fileMimeType,
+      fileBuffer: sourceAssignment.fileBuffer
+    });
+
+    const queue = getAssignmentGenerationQueue();
+    const job = await queue.add('generate-assignment', {
+      assignmentId,
+      dueDate: assignment.dueDate,
+      questionTypes: assignment.questionTypes,
+      additionalInfo: assignment.additionalInfo,
+      totalQuestions: assignment.totalQuestions,
+      totalMarks: assignment.totalMarks,
+      fileName: assignment.fileName
+    });
+
+    assignment.jobId = String(job.id);
+    await assignment.save();
+
+    await Assignment.deleteOne({ id: request.params.id });
+
+    response.status(201).json({
+      assignmentId,
+      jobId: String(job.id),
+      status: assignment.status
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.delete('/:id', async (request: Request, response: Response, next: NextFunction) => {
   try {
     const result = await Assignment.deleteOne({ id: request.params.id });

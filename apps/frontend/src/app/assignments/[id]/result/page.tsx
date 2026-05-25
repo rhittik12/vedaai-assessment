@@ -5,10 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { pdf } from '@react-pdf/renderer';
 
-import {
-  AssignmentPDF,
-  type AssignmentPDFData,
-} from '@/components/AssignmentPDF';
+import { AssignmentPDF, type AssignmentPDFData } from '@/components/AssignmentPDF';
 
 type Question = {
   number: number;
@@ -44,11 +41,6 @@ type AssignmentResponse = {
   assignmentId?: string;
   dueDate?: string;
   fileName?: string;
-  fileMimeType?: string;
-  fileBuffer?: {
-    type?: 'Buffer';
-    data: number[];
-  };
   questionTypes?: Array<{
     type: string;
     count: number;
@@ -58,12 +50,6 @@ type AssignmentResponse = {
   totalMarks?: number;
   status?: 'pending' | 'processing' | 'completed' | 'failed';
   result?: GeneratedPaper;
-};
-
-const difficultyStyles: Record<Question['difficulty'], string> = {
-  Easy: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  Moderate: 'border-orange-200 bg-orange-50 text-orange-700',
-  Challenging: 'border-red-200 bg-red-50 text-red-700'
 };
 
 function fallbackPaper(assignmentId: string, assignment?: AssignmentResponse | null): GeneratedPaper {
@@ -113,28 +99,12 @@ function fallbackPaper(assignmentId: string, assignment?: AssignmentResponse | n
   };
 }
 
-function difficultyLabel(difficulty: Question['difficulty']) {
-  return <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${difficultyStyles[difficulty]}`}>[{difficulty}]</span>;
-}
-
 function sanitizeFilePart(value: string) {
   return value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-function buildFileFromAssignment(assignment: AssignmentResponse): File | null {
-  if (!assignment.fileBuffer?.data?.length) {
-    return null;
-  }
-
-  const bytes = new Uint8Array(assignment.fileBuffer.data);
-  const mimeType = assignment.fileMimeType ?? 'application/octet-stream';
-  const fileName = assignment.fileName ?? 'assignment-upload';
-
-  return new File([bytes], fileName, { type: mimeType });
 }
 
 export default function AssignmentResultPage() {
@@ -155,6 +125,7 @@ export default function AssignmentResultPage() {
       try {
         const response = await axios.get<AssignmentResponse>(`${apiUrl}/api/assignments/${assignmentId}`);
         if (!mounted) return;
+
         setAssignment(response.data);
         setError(null);
       } catch {
@@ -162,7 +133,9 @@ export default function AssignmentResultPage() {
           setError('Unable to load assignment result.');
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -173,9 +146,20 @@ export default function AssignmentResultPage() {
     };
   }, [apiUrl, assignmentId]);
 
-  const paper = useMemo(() => assignment?.result ?? fallbackPaper(assignmentId, assignment), [assignment, assignmentId]);
+  const paper = useMemo(() => {
+    if (loading) {
+      return null;
+    }
+
+    return assignment?.result ?? fallbackPaper(assignmentId, assignment);
+  }, [assignment, assignmentId, loading]);
 
   const handleDownloadPdf = async () => {
+    if (!paper) {
+      setError('Assignment result is not available yet.');
+      return;
+    }
+
     setDownloadBusy(true);
     try {
       const blob = await pdf(<AssignmentPDF paper={paper as AssignmentPDFData} />).toBlob();
@@ -203,22 +187,7 @@ export default function AssignmentResultPage() {
     setError(null);
 
     try {
-      await axios.delete(`${apiUrl}/api/assignments/${assignmentId}`);
-
-      const formData = new FormData();
-      formData.append('dueDate', assignment.dueDate ?? new Date().toISOString());
-      formData.append('questionTypes', JSON.stringify(assignment.questionTypes ?? []));
-      formData.append('additionalInfo', assignment.additionalInfo ?? '');
-
-      const originalFile = buildFileFromAssignment(assignment);
-      if (originalFile) {
-        formData.append('file', originalFile);
-      }
-
-      const response = await axios.post<{ assignmentId: string }>(`${apiUrl}/api/assignments`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-
+      const response = await axios.post<{ assignmentId: string }>(`${apiUrl}/api/assignments/${assignmentId}/regenerate`);
       router.replace(`/assignments/${response.data.assignmentId}/generating`);
     } catch {
       setError('Unable to regenerate this assignment right now.');
@@ -227,7 +196,7 @@ export default function AssignmentResultPage() {
     }
   };
 
-  const totalQuestions = paper.sections.reduce((sum, section) => sum + section.questions.length, 0);
+  const totalQuestions = paper?.sections.reduce((sum, section) => sum + section.questions.length, 0) ?? 0;
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#F5F5F5] px-6 py-6">
@@ -283,83 +252,70 @@ export default function AssignmentResultPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[28px] bg-white shadow-2xl">
-          <div className="border-b border-gray-200 px-8 py-8 text-center">
-            <div className="text-3xl font-bold tracking-tight text-[#1A1A1A] md:text-4xl">{paper.schoolName}</div>
-            <div className="mt-2 text-lg font-medium text-[#374151] md:text-xl">{paper.subject} - {paper.className}</div>
-          </div>
-
-          <div className="border-b border-gray-200 px-8 py-4 text-sm font-medium text-[#1A1A1A] md:text-base">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <span>Time Allowed: {paper.timeAllowed}</span>
-              <span>Maximum Marks: {paper.maxMarks}</span>
-            </div>
-          </div>
-
-          <div className="px-8 py-6 text-sm text-[#1A1A1A] md:text-base">
-            <p className="font-bold">All questions are compulsory unless stated otherwise.</p>
-
-            <div className="mt-6 grid gap-3 text-sm md:grid-cols-3 md:items-center md:text-base">
-              <div>Name: __________________</div>
-              <div>Roll Number: __________________</div>
-              <div>Class: X Section: __________</div>
+        {paper ? (
+          <div className="overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="border-b border-gray-200 px-8 py-8 text-center">
+              <div className="text-3xl font-bold tracking-tight text-[#1A1A1A] md:text-4xl">{paper.schoolName}</div>
+              <div className="mt-2 text-lg font-medium text-[#374151] md:text-xl">
+                {paper.subject} - {paper.className}
+              </div>
             </div>
 
-            <div className="mt-8 space-y-10">
-              {paper.sections.map((section, sectionIndex) => (
-                <section key={`${section.title}-${sectionIndex}`} className="space-y-4">
-                  <div className="text-center text-2xl font-bold text-[#1A1A1A]">{section.title}</div>
-                  <p className="text-center italic text-[#4B5563]">{section.instruction}</p>
-                  <div className="text-lg font-bold text-[#1A1A1A]">Short Answer Questions</div>
+            <div className="border-b border-gray-200 px-8 py-4 text-sm font-medium text-[#1A1A1A] md:text-base">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <span>Time Allowed: {paper.timeAllowed}</span>
+                <span>Maximum Marks: {paper.maxMarks}</span>
+              </div>
+            </div>
 
-                  <div className="space-y-4">
-                    {section.questions.map((question) => (
-                      <div key={`${section.title}-${question.number}`} className="rounded-2xl border border-gray-200 px-4 py-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="max-w-3xl text-base leading-7 text-[#1A1A1A] md:text-lg">
-                            <span className="font-semibold">{question.number}.</span> {question.text}{' '}
-                            <span className="font-semibold text-[#6B7280]">({question.marks} marks)</span>
-                          </div>
-                          <div className="flex items-center gap-2 md:shrink-0">
-                            {difficultyLabel(question.difficulty)}
-                          </div>
+            <div className="px-8 py-6 text-sm text-[#1A1A1A] md:text-base">
+              <p className="font-bold">All questions are compulsory unless stated otherwise.</p>
+
+              <div className="mt-6 grid gap-3 text-sm md:grid-cols-3 md:items-center md:text-base">
+                <div>Name: __________________</div>
+                <div>Roll Number: __________________</div>
+                <div>Class: X Section: __________</div>
+              </div>
+
+              <div className="mt-8 space-y-10">
+                {paper.sections.map((section, sectionIndex) => (
+                  <section key={`${section.title}-${sectionIndex}`} className="space-y-4">
+                    <div className="text-center text-2xl font-bold text-[#1A1A1A]">{section.title}</div>
+                    <p className="text-center italic text-[#4B5563]">{section.instruction}</p>
+                    <div className="space-y-4">
+                      {section.questions.map((question) => (
+                        <div key={`${section.title}-${question.number}`} className="text-base leading-7 text-[#1A1A1A] md:text-lg">
+                          <span className="font-semibold">{question.number}.</span> {question.text}{' '}
+                          <span className="font-semibold text-[#6B7280]">({question.marks} marks)</span>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  {sectionIndex === paper.sections.length - 1 ? (
-                    <div className="pt-2 text-lg font-bold text-[#1A1A1A]">End of Question Paper</div>
-                  ) : null}
-                </section>
-              ))}
-            </div>
-
-            <div className="mt-12 border-t border-gray-200 pt-8">
-              <div className="text-2xl font-bold text-[#1A1A1A]">Answer Key:</div>
-              <div className="mt-4 space-y-3">
-                {paper.answerKey.map((entry) => (
-                  <div key={entry.questionNumber} className="flex gap-2 text-base leading-7 text-[#1A1A1A] md:text-lg">
-                    <span className="font-semibold">{entry.questionNumber}.</span>
-                    <span>{entry.answer}</span>
-                  </div>
+                    {sectionIndex === paper.sections.length - 1 ? (
+                      <div className="pt-2 text-lg font-bold text-[#1A1A1A]">End of Question Paper</div>
+                    ) : null}
+                  </section>
                 ))}
+              </div>
+
+              <div className="mt-12 border-t border-gray-200 pt-8">
+                <div className="text-2xl font-bold text-[#1A1A1A]">Answer Key:</div>
+                <div className="mt-4 space-y-3">
+                  {paper.answerKey.map((entry) => (
+                    <div key={entry.questionNumber} className="rounded-2xl bg-[#F9FAFB] px-4 py-3 text-sm text-[#374151] md:text-base">
+                      <span className="font-semibold">Q{entry.questionNumber}:</span> {entry.answer}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-[28px] bg-white px-8 py-12 text-center text-sm text-[#6B7280] shadow-2xl">Loading assignment result...</div>
+        )}
 
-        {loading ? (
-          <div className="rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm text-[#6B7280] shadow-sm">Loading question paper...</div>
-        ) : null}
-
-        {error ? (
-          <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-4 text-sm text-red-700 shadow-sm">{error}</div>
-        ) : null}
-
-        <div className="pb-8 text-center text-xs text-[#9CA3AF] print:hidden">
-          Total Questions: {totalQuestions}
-        </div>
+        {error ? <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
+        <div className="rounded-2xl bg-white px-6 py-4 text-sm text-[#6B7280] shadow-sm">Total questions: {totalQuestions}</div>
       </div>
     </div>
   );
