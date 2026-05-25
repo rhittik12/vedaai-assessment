@@ -6,6 +6,8 @@ export interface IAssignment {
   id: string;
   fileUrl?: string;
   fileName?: string;
+  fileMimeType?: string;
+  fileBuffer?: Buffer;
   dueDate: string;
   questionTypes: Array<{
     type:
@@ -51,6 +53,8 @@ const AssignmentSchema = new Schema<IAssignment>(
     id: { type: String, required: true, unique: true },
     fileUrl: { type: String },
     fileName: { type: String },
+    fileMimeType: { type: String },
+    fileBuffer: { type: Buffer },
     dueDate: { type: String, required: true },
     questionTypes: { type: [AssignmentQuestionTypeSchema], required: true },
     additionalInfo: { type: String },

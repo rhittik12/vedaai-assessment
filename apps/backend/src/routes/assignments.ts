@@ -104,7 +104,9 @@ router.post('/', upload.single('file'), async (request: Request, response: Respo
       totalQuestions,
       totalMarks,
       status: 'pending',
-      fileName: request.file?.originalname
+      fileName: request.file?.originalname,
+      fileMimeType: request.file?.mimetype,
+      fileBuffer: request.file?.buffer
     });
 
     try {
