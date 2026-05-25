@@ -13,7 +13,9 @@ export function getRedisClient(): Redis {
     throw new Error('REDIS_URL is not set');
   }
 
-  redisClient = new Redis(redisUrl);
+  redisClient = new Redis(redisUrl, {
+    maxRetriesPerRequest: null
+  });
   return redisClient;
 }
 

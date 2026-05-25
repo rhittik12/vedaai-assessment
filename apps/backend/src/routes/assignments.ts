@@ -177,4 +177,48 @@ router.delete('/:id', async (request: Request, response: Response, next: NextFun
   }
 });
 
+router.post('/:id/retry', async (request: Request, response: Response, next: NextFunction) => {
+  try {
+    const assignment = await Assignment.findOne({ id: request.params.id });
+
+    if (!assignment) {
+      throw createHttpError('Assignment not found', 404);
+    }
+
+    if (assignment.status !== 'failed') {
+      throw createHttpError('Only failed assignments can be retried', 409);
+    }
+
+    const queue = getAssignmentGenerationQueue();
+    const job = await queue.add('generate-assignment', {
+      assignmentId: assignment.id,
+      dueDate: assignment.dueDate,
+      questionTypes: assignment.questionTypes,
+      additionalInfo: assignment.additionalInfo,
+      totalQuestions: assignment.totalQuestions,
+      totalMarks: assignment.totalMarks,
+      fileName: assignment.fileName
+    });
+
+    assignment.status = 'pending';
+    assignment.jobId = String(job.id);
+    assignment.result = undefined;
+
+    try {
+      await assignment.save();
+    } catch (saveError) {
+      await job.remove();
+      throw saveError;
+    }
+
+    response.status(202).json({
+      assignmentId: assignment.id,
+      jobId: String(job.id),
+      status: assignment.status
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
