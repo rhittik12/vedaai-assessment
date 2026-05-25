@@ -9,6 +9,7 @@ import { connectDatabase } from './config/database';
 import { clientUrl } from './config/env';
 import { closeAssignmentGenerationQueue, getAssignmentGenerationQueue } from './config/bullmq';
 import { closeRedisClient, getRedisClient } from './config/redis';
+import { closeGenerationWorker, startGenerationWorker } from './workers';
 
 const port = Number(process.env.PORT ?? 4000);
 const server = http.createServer(app);
@@ -29,6 +30,7 @@ const shutdown = async (exitCode = 0) => {
 
   try {
     const cleanupResults = await Promise.allSettled([
+      closeGenerationWorker(),
       io.close(),
       closeAssignmentGenerationQueue(),
       closeRedisClient(),
@@ -50,6 +52,7 @@ const start = async () => {
     await connectDatabase();
     getRedisClient();
     getAssignmentGenerationQueue();
+    startGenerationWorker(io);
 
     server.listen(port, () => {
       console.log(`Server running on port ${port}`);
