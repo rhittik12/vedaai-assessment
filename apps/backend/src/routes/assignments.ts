@@ -110,7 +110,13 @@ router.post('/', upload.single('file'), async (request: Request, response: Respo
     try {
       const queue = getAssignmentGenerationQueue();
       const job = await queue.add('generate-assignment', {
-        assignmentId
+        assignmentId,
+        dueDate,
+        questionTypes,
+        additionalInfo,
+        totalQuestions,
+        totalMarks,
+        fileName: request.file?.originalname
       });
 
       assignment.jobId = String(job.id);
