@@ -59,7 +59,12 @@ function parseGeneratedPaper(rawText: string): IGeneratedPaper {
   }
 
   const candidateJson = sanitizedText.slice(firstBraceIndex, lastBraceIndex + 1);
-  const parsedValue = JSON.parse(candidateJson) as IGeneratedPaper;
+  let parsedValue: IGeneratedPaper;
+  try {
+    parsedValue = JSON.parse(candidateJson) as IGeneratedPaper;
+  } catch (err: any) {
+    throw createHttpError(`AI response contained invalid JSON: ${err?.message || String(err)}`);
+  }
 
   if (
     typeof parsedValue !== 'object' ||
