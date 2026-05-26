@@ -1,5 +1,8 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Home, Users, FileText, Cpu, Book, Settings, Zap } from 'lucide-react';
 
 const navItems = [
@@ -16,6 +19,8 @@ type SidebarProps = {
 };
 
 export default function Sidebar({ active = 'home', assignmentsCount = 0 }: SidebarProps) {
+  const router = useRouter();
+
   return (
     <aside className="w-[280px] bg-white h-screen fixed left-0 top-0 border-r border-gray-200 flex flex-col justify-between">
       <div>
@@ -26,6 +31,8 @@ export default function Sidebar({ active = 'home', assignmentsCount = 0 }: Sideb
           </div>
 
           <button
+            type="button"
+            onClick={() => router.push('/assignments/create')}
             className="mt-6 w-full flex items-center justify-center gap-2 bg-[#1A1A1A] text-white py-3 rounded-full text-sm font-semibold relative"
             style={{ boxShadow: '0 0 12px rgba(242,101,34,0.35)', border: '1px solid rgba(242,101,34,0.12)' }}
           >
