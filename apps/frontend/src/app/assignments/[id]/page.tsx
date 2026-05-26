@@ -277,13 +277,13 @@ export default function AssignmentDetailPage() {
 
                   <section className="border-t border-gray-200 pt-6">
                     <h3 className="text-xl font-bold text-[#1A1A1A]">Answer Key</h3>
-                    {/* <div className="mt-4 space-y-3">
+                    <div className="mt-4 space-y-3">
                       {paper.answerKey.map((entry) => (
                         <div key={entry.questionNumber} className="rounded-2xl bg-[#F9FAFB] px-4 py-3 text-sm text-[#374151]">
                           <span className="font-semibold">Q{entry.questionNumber}:</span> {entry.answer}
                         </div>
                       ))}
-                    </div> */}
+                    </div>
                   </section>
                 </div>
               </div>

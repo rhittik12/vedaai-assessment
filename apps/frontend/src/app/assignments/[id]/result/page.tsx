@@ -236,7 +236,7 @@ export default function AssignmentResultPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="space-y-6">
         <div className="rounded-[28px] bg-[#1A1A1A] px-6 py-8 text-white shadow-lg print:hidden">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <p className="max-w-3xl text-lg leading-8 text-white/95 md:text-xl">
