@@ -73,6 +73,7 @@ export default function AssignmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<DropdownState | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [ selectedStatus, setSelectedStatus ] = useState<string>('all');
 
   useEffect(() => {
     let mounted = true;
