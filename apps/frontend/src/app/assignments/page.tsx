@@ -72,8 +72,9 @@ export default function AssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<DropdownState | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [ selectedStatus, setSelectedStatus ] = useState<string>('all');
 
   useEffect(() => {
     let mounted = true;
@@ -104,7 +105,7 @@ export default function AssignmentsPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
+        setIsFilterOpen(false);
       }
     };
 
@@ -114,9 +115,12 @@ export default function AssignmentsPage() {
 
   const filteredAssignments = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return assignments;
-    return assignments.filter((item) => formatAssignmentTitle(item).toLowerCase().includes(term));
-  }, [assignments, search]);
+    return assignments.filter((item) => {
+      const matchSearch = formatAssignmentTitle(item).toLowerCase().includes(term);
+      const matchStatus = selectedStatus === 'all' || item.status === selectedStatus;
+      return matchSearch && matchStatus;
+    });
+  }, [assignments, search, selectedStatus]);
 
   const handleDelete = async (id: string) => {
     await axios.delete(`${apiUrl}/api/assignments/${id}`);
@@ -141,99 +145,125 @@ export default function AssignmentsPage() {
       </div>
 
       <div className="mb-6 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A1A] shadow-sm"
-        >
-          <Filter className="h-4 w-4" />
-          Filter By
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A1A] shadow-sm"
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+          >
+            <Filter className="h-4 w-4" />
+            Filter By
+          </button>
 
-        <div className="relative w-full max-w-[420px]">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search Assignment"
-            className="w-full rounded-full border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-[#1A1A1A] shadow-sm outline-none placeholder:text-[#6B7280] focus:border-gray-300"
-          />
+          {isFilterOpen ? (
+            <div className="absolute left-0 top-12 z-20 w-44 rounded-xl border border-gray-100 bg-white p-2 shadow-lg">
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Pending', value: 'pending' },
+                { label: 'Processing', value: 'processing' },
+                { label: 'Completed', value: 'completed' },
+                { label: 'Failed', value: 'failed' },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedStatus(item.value);
+                    setIsFilterOpen(false);
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          </div>
+          <div className="relative w-full max-w-[420px]">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search Assignment"
+              className="w-full rounded-full border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-[#1A1A1A] shadow-sm outline-none placeholder:text-[#6B7280] focus:border-gray-300"
+            />
+          </div>
         </div>
-      </div>
 
-      {loading ? (
-        <div className="rounded-xl bg-white p-8 text-center text-sm text-[#6B7280] shadow-sm">Loading assignments...</div>
-      ) : error ? (
-        <div className="rounded-xl bg-white p-8 text-center text-sm text-red-600 shadow-sm">{error}</div>
-      ) : filteredAssignments.length === 0 ? (
-        <EmptyState onCreate={handleCreate} />
-      ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {filteredAssignments.map((item) => {
-            const assignedOn = formatDate(item.assignedOn ?? item.createdAt);
-            const dueDate = formatDate(item.dueDate ?? item.due);
-            const isOpen = openDropdown?.id === item.id && openDropdown.open;
+        {loading ? (
+          <div className="rounded-xl bg-white p-8 text-center text-sm text-[#6B7280] shadow-sm">Loading assignments...</div>
+        ) : error ? (
+          <div className="rounded-xl bg-white p-8 text-center text-sm text-red-600 shadow-sm">{error}</div>
+        ) : filteredAssignments.length === 0 ? (
+          <EmptyState onCreate={handleCreate} />
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {filteredAssignments.map((item) => {
+              const assignedOn = formatDate(item.assignedOn ?? item.createdAt);
+              const dueDate = formatDate(item.dueDate ?? item.due);
+              const isOpen = openDropdown?.id === item.id && openDropdown.open;
 
-            return (
-              <div key={item.id} className="relative rounded-xl bg-white p-5 shadow-sm" ref={isOpen ? menuRef : undefined}>
-                <div className="flex items-start justify-between gap-4">
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/assignments/${item.id}`)}
-                    className="text-left text-lg font-bold text-[#1A1A1A] underline underline-offset-4"
-                  >
-                    {formatAssignmentTitle(item)}
-                  </button>
-
-                  <div className="relative">
+              return (
+                <div key={item.id} className="relative rounded-xl bg-white p-5 shadow-sm" ref={isOpen ? menuRef : undefined}>
+                  <div className="flex items-start justify-between gap-4">
                     <button
                       type="button"
-                      onClick={() => setOpenDropdown(isOpen ? null : { id: item.id, open: true })}
-                      className="rounded-md p-1 text-[#6B7280] hover:bg-gray-100"
-                      aria-label="Open assignment menu"
+                      onClick={() => router.push(`/assignments/${item.id}`)}
+                      className="text-left text-lg font-bold text-[#1A1A1A] underline underline-offset-4"
                     >
-                      <MoreHorizontal className="h-5 w-5" />
+                      {formatAssignmentTitle(item)}
                     </button>
 
-                    {isOpen ? (
-                      <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border border-gray-100 bg-white p-2 shadow-lg">
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/assignments/${item.id}`)}
-                          className="w-full rounded-md px-3 py-2 text-left text-sm text-[#1A1A1A] hover:bg-gray-50"
-                        >
-                          View Assignment
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(item.id)}
-                          className="w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setOpenDropdown(isOpen ? null : { id: item.id, open: true })}
+                        className="rounded-md p-1 text-[#6B7280] hover:bg-gray-100"
+                        aria-label="Open assignment menu"
+                      >
+                        <MoreHorizontal className="h-5 w-5" />
+                      </button>
+
+                      {isOpen ? (
+                        <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border border-gray-100 bg-white p-2 shadow-lg">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/assignments/${item.id}`)}
+                            className="w-full rounded-md px-3 py-2 text-left text-sm text-[#1A1A1A] hover:bg-gray-50"
+                          >
+                            View Assignment
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(item.id)}
+                            className="w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between text-xs text-[#6B7280]">
+                    <span>Assigned on : {assignedOn}</span>
+                    <span>Due : {dueDate}</span>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
 
-                <div className="mt-6 flex items-center justify-between text-xs text-[#6B7280]">
-                  <span>Assigned on : {assignedOn}</span>
-                  <span>Due : {dueDate}</span>
-                </div>
-              </div>
-            );
-          })}
+        <div className="pointer-events-none fixed bottom-6 left-1/2 z-10 -translate-x-1/2">
+          <button
+            type="button"
+            onClick={handleCreate}
+            className="pointer-events-auto rounded-full bg-white border border-gray-200 px-6 py-3 text-sm font-semibold text-[#1A1A1A] shadow-sm transition hover:bg-gray-50"
+          >
+            + Create Assignment
+          </button>
         </div>
-      )}
-
-      <div className="pointer-events-none fixed bottom-6 left-1/2 z-10 -translate-x-1/2">
-        <button
-          type="button"
-          onClick={handleCreate}
-          className="pointer-events-auto rounded-full bg-white border border-gray-200 px-6 py-3 text-sm font-semibold text-[#1A1A1A] shadow-sm transition hover:bg-gray-50"
-        >
-          + Create Assignment
-        </button>
       </div>
-    </div>
-  );
+      );
 }
