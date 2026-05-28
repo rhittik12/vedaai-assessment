@@ -1,101 +1,57 @@
-# VedaAI — Assignment Generator
+# VedaAI
 
-Professional, demo-ready monorepo for an assignment-generator prototype that demonstrates
-grounded multimodal question generation from teacher-uploaded source materials (PDFs/images).
-
-This repository contains a Next.js frontend and an Express backend with worker-based generation using multimodal prompts. The demo video below shows the app in action.
-
-**Demo video**
-
+A tool for teachers to generate assignment question papers from their own source material — upload a PDF or image of a topic, get a grounded question paper back.
 https://github.com/user-attachments/assets/b5459939-f38e-44a9-b64c-6ff1f6f54d94
 
----
+What it does
+Teachers upload a source document (textbook excerpt, notes, any PDF or image). The app reads it, understands the content, and generates a question paper grounded in that material — not generic questions pulled from thin air. The output can be downloaded as a PDF or regenerated if you want a different set.
+The key thing: questions come from your document. If you upload a chapter on photosynthesis, you get questions about that chapter, not a generic biology quiz.
 
-**Quick summary**
+Stack
 
-- Frontend: Next.js 14 (App Router), TypeScript, Tailwind CSS, Zustand for state.
-- Backend: Node.js + Express + TypeScript, Mongoose for persistence, BullMQ + Redis for background jobs.
-- Features: upload source paper (PDF/image), generate grounded question paper, download PDF, regenerate while preserving original file bytes.
+Frontend — Next.js 14 (App Router), TypeScript, Tailwind, Zustand
+Backend — Node.js, Express, TypeScript, Mongoose
+Jobs — BullMQ + Redis for background generation
+DB — MongoDB
 
-**Highlights**
 
-- Uploaded source files are persisted privately (binary fields omitted from public API responses).
-- Worker sends the original file as a multimodal input to the model so outputs are grounded in the source.
-- Regenerate endpoint clones the original assignment server-side to preserve privacy and binary data.
-
-## Repo structure
-
-- `apps/frontend` — Next.js frontend (UI, PDF rendering, assignment flows).
-- `apps/backend` — Express API, worker code, and models.
-
-## Requirements
-
-- Node.js 18+
-- npm 9+
-- MongoDB accessible at `MONGODB_URI`
-- Redis accessible at `REDIS_URL`
-
-## Quickstart (development)
-
-1. Install dependencies from the repository root:
-
-```bash
+Running locally
+You'll need Node 18+, a running MongoDB instance, and Redis.
+bash# Install everything from the root
 npm install
-```
 
-2. Configure environment files:
+# Backend — copy and fill in your values
+cp apps/backend/.env.example apps/backend/.env
 
-- Copy `apps/frontend/.env.local.example` to `apps/frontend/.env.local` and adjust `NEXT_PUBLIC_API_URL` if needed.
-- Copy `apps/backend/.env.example` to `apps/backend/.env` and set `MONGODB_URI`, `REDIS_URL`, `CLIENT_URL`, and your model API keys (e.g., `OPENAI_API_KEY`).
+# Frontend — adjust API URL if needed
+cp apps/frontend/.env.local.example apps/frontend/.env.local
+Then start both apps:
+bashnpm --workspace apps/frontend run dev   # http://localhost:3000
+npm --workspace apps/backend run dev    # http://localhost:4000
+Backend env vars you'll need:
+VariableWhat it isMONGODB_URIMongoDB connection stringREDIS_URLRedis connection stringOPENAI_API_KEYKey for generationCLIENT_URLFrontend origin (for CORS)PORTDefaults to 4000
 
-3. Start apps in development (examples — adjust as needed):
+How generation works
 
-```bash
-npm --workspace apps/frontend run dev
-npm --workspace apps/backend run dev
-```
+Teacher uploads a source file via the UI
+Backend saves it and queues a background job
+Worker picks up the job, encodes the file, and sends it as a multimodal input to the model with a grounding prompt
+Generated paper gets saved and linked back to the assignment
+Teacher sees the result, can download or regenerate
 
-Frontend default: `http://localhost:3000` (if occupied it may pick another port). Backend default: `http://localhost:4000`.
+Source files are stored with binary data kept private — the public API never exposes the raw file bytes. Regeneration clones the original server-side so the file never has to be re-uploaded.
 
-## Environment variables (backend)
+Repo layout
+apps/
+  frontend/   Next.js UI
+  backend/    Express API + worker + models
 
-- `PORT` — HTTP port (default: 4000)
-- `MONGODB_URI` — MongoDB connection string
-- `REDIS_URL` — Redis connection string
-- `OPENAI_API_KEY` — OpenAI API key for worker generation
-- `CLIENT_URL` — Frontend origin for CORS and socket connections
+A few notes for production
 
-## How the generation works (high level)
+Move binary uploads to S3 (or similar) and store the reference in MongoDB. Keeping large blobs in the DB works for a demo but doesn't scale.
+Make sure your worker process loads the same env as the API server, especially the model API keys.
+The regenerate flow is intentionally server-side to avoid clients re-uploading sensitive files.
 
-1. Teacher uploads a source paper (PDF/image) via the frontend.
-2. Backend saves the assignment and enqueues a background job.
-3. Worker loads the assignment including the binary `fileBuffer`, encodes it, and sends it as a multimodal input to the model along with a grounding prompt.
-4. The generated question paper is parsed and saved as a `GeneratedPaper` linked to the assignment.
 
-## Running the demo video locally
-
-If you cloned this repo, the demo video is available at `./fixed_enhanced_video.mp4`. You can open or play it with any video player, or view it inline on GitHub when the file is present in the repository root.
-
-## Notes & best practices
-
-- For production usage, move binary uploads to object storage (S3) and store references in MongoDB to avoid large database objects.
-- Ensure workers and backend load the same environment (API keys) before starting background jobs.
-- Keep binary fields excluded from public API projections to preserve privacy.
-
-## Contributing
-
-Contributions welcome. Open issues for bugs or feature requests and send PRs for improvements. For substantial changes, open an issue first to discuss the design.
-
-## License
-
-This repository does not include a license file. Add a license (e.g., MIT) if you plan to publish or share.
-
----
-
-If you want, I can:
-
-- Move `fixed_enhanced_video.mp4` into a `demo/` folder and update references.
-- Upload the demo video to an external host (YouTube) and replace the inline player with an embedded YouTube iframe.
-- Add screenshots and short GIFs for README preview on GitHub.
-
-Which of these would you like me to do next?
+License
+No license file yet — add one before you share this publicly.
