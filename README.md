@@ -12,7 +12,7 @@ This repository contains a Next.js frontend and an Express backend with worker-b
   Your browser does not support the video tag. You can download the demo video here: [fixed_enhanced_video.mp4](./fixed_enhanced_video.mp4)
 </video>
 
---
+---
 
 **Quick summary**
 
