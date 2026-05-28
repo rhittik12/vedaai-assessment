@@ -1,8 +1,17 @@
 # VedaAI
 
+<<<<<<< HEAD
 A tool for teachers to generate assignment question papers from their own source material — upload a PDF or image of a topic, get a grounded question paper back.
 
 https://github.com/user-attachments/assets/b5459939-f38e-44a9-b64c-6ff1f6f54d94
+=======
+A tool for teachers to generate assignment question papers from their own source material — upload a PDF or image of a topic, get a grounded question paper back. 
+
+
+
+https://github.com/user-attachments/assets/5fa508e5-1579-4437-9c54-a14c9c1dc849
+
+>>>>>>> 674611b5c0e50f1dd2948588b611925c1965ba43
 
 ---
 
