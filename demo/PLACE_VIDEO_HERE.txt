@@ -1,0 +1,5 @@
+The demo video for this repository is included at the repository root as `fixed_enhanced_video.mp4`.
+
+If you prefer the video to live in this `demo/` folder, move `fixed_enhanced_video.mp4` here and update README.md to reference `./demo/fixed_enhanced_video.mp4`.
+
+For external hosting (YouTube/Vimeo), replace the local <video> block in README.md with the provider's embed iframe and remove the local video file from the repo to keep history small.
