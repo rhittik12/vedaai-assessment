@@ -49,7 +49,7 @@ npm install
 2. Configure environment files:
 
 - Copy `apps/frontend/.env.local.example` to `apps/frontend/.env.local` and adjust `NEXT_PUBLIC_API_URL` if needed.
-- Copy `apps/backend/.env.example` to `apps/backend/.env` and set `MONGODB_URI`, `REDIS_URL`, and your model API keys (e.g., `OPENAI_API_KEY`).
+- Copy `apps/backend/.env.example` to `apps/backend/.env` and set `MONGODB_URI`, `REDIS_URL`, `CLIENT_URL`, and your model API keys (e.g., `OPENAI_API_KEY`).
 
 3. Start apps in development (examples — adjust as needed):
 
