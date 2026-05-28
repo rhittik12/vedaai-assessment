@@ -7,10 +7,7 @@ This repository contains a Next.js frontend and an Express backend with worker-b
 
 **Demo video**
 
-<video controls width="100%" style="max-width:900px; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.12);">
-  <source src="./fixed_enhanced_video.mp4" type="video/mp4">
-  Your browser does not support the video tag. You can download the demo video here: [fixed_enhanced_video.mp4](./fixed_enhanced_video.mp4)
-</video>
+https://github.com/user-attachments/assets/b5459939-f38e-44a9-b64c-6ff1f6f54d94
 
 ---
 
