@@ -199,8 +199,8 @@ export default function AssignmentResultPage() {
   const totalQuestions = paper?.sections.reduce((sum, section) => sum + section.questions.length, 0) ?? 0;
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#F5F5F5] px-6 py-6">
-      <div className="sticky top-0 z-20 mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white/90 px-4 py-3 shadow-sm backdrop-blur print:hidden">
+    <div className="page-shell">
+      <div className="surface sticky top-20 z-20 mb-6 flex flex-wrap items-center justify-between gap-3 bg-white/95 px-4 py-3 backdrop-blur print:hidden">
         <button
           type="button"
           onClick={() => router.push('/assignments')}
@@ -237,7 +237,7 @@ export default function AssignmentResultPage() {
       </div>
 
       <div className="space-y-6">
-        <div className="rounded-[28px] bg-[#1A1A1A] px-6 py-8 text-white shadow-lg print:hidden">
+        <div className="overflow-hidden rounded-2xl bg-[#172033] px-6 py-8 text-white shadow-sm print:hidden">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <p className="max-w-3xl text-lg leading-8 text-white/95 md:text-xl">
               Certainly, Lakshya! Here are customized Question Paper for your CBSE Grade 8 Science classes on the NCERT chapters:
@@ -253,7 +253,7 @@ export default function AssignmentResultPage() {
         </div>
 
         {paper ? (
-          <div className="overflow-hidden rounded-[28px] bg-white shadow-2xl">
+          <div className="surface overflow-hidden">
             <div className="border-b border-gray-200 px-8 py-8 text-center">
               <div className="text-3xl font-bold tracking-tight text-[#1A1A1A] md:text-4xl">{paper.schoolName}</div>
               <div className="mt-2 text-lg font-medium text-[#374151] md:text-xl">
@@ -311,7 +311,7 @@ export default function AssignmentResultPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-[28px] bg-white px-8 py-12 text-center text-sm text-[#6B7280] shadow-2xl">Loading assignment result...</div>
+          <div className="surface px-8 py-12 text-center text-sm text-[#667085]">Loading assignment result…</div>
         )}
 
         {error ? <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}

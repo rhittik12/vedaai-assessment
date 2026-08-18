@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { Filter, MoreHorizontal, Search, Plus } from 'lucide-react';
+import { Filter, MoreHorizontal, Search, Plus, FileText } from 'lucide-react';
 
 import { type Assignment, useAppStore } from '@/store/useAppStore';
 
@@ -133,22 +133,21 @@ export default function AssignmentsPage() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-64px)] bg-[#F5F5F5] px-6 py-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="page-shell relative">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <span className="h-3 w-3 rounded-full bg-emerald-500" />
-            <h1 className="text-3xl font-bold text-[#1A1A1A]">Assignments</h1>
-          </div>
-          <p className="mt-2 text-sm text-[#6B7280]">Manage and create assignments for your classes.</p>
+          <div className="page-kicker"><FileText className="h-3.5 w-3.5" />Assessment library</div>
+          <h1 className="page-title">Assignments</h1>
+          <p className="page-description">Create, review, and keep track of every assessment you prepare for your classes.</p>
         </div>
+        <button type="button" onClick={handleCreate} className="btn-accent hidden sm:inline-flex"><Plus className="h-4 w-4" />Create assignment</button>
       </div>
 
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative" ref={menuRef}>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-[#1A1A1A] shadow-sm"
+            className="btn-secondary w-full sm:w-auto"
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
             <Filter className="h-4 w-4" />
@@ -156,7 +155,7 @@ export default function AssignmentsPage() {
           </button>
 
           {isFilterOpen ? (
-            <div className="absolute left-0 top-12 z-20 w-44 rounded-xl border border-gray-100 bg-white p-2 shadow-lg">
+            <div className="absolute left-0 top-12 z-20 w-44 rounded-xl border border-[#e7eaf0] bg-white p-2 shadow-lg">
               {[
                 { label: 'All', value: 'all' },
                 { label: 'Pending', value: 'pending' },
@@ -179,21 +178,21 @@ export default function AssignmentsPage() {
             </div>
           ) : null}
           </div>
-          <div className="relative w-full max-w-[420px]">
+          <div className="relative w-full sm:max-w-[420px]">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search Assignment"
-              className="w-full rounded-full border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-[#1A1A1A] shadow-sm outline-none placeholder:text-[#6B7280] focus:border-gray-300"
+              className="field py-2.5 pl-10"
             />
           </div>
         </div>
 
         {loading ? (
-          <div className="rounded-xl bg-white p-8 text-center text-sm text-[#6B7280] shadow-sm">Loading assignments...</div>
+          <div className="surface p-8 text-center text-sm text-[#667085]">Loading assignments…</div>
         ) : error ? (
-          <div className="rounded-xl bg-white p-8 text-center text-sm text-red-600 shadow-sm">{error}</div>
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-8 text-center text-sm text-red-700">{error}</div>
         ) : filteredAssignments.length === 0 ? (
           <EmptyState onCreate={handleCreate} />
         ) : (
@@ -204,7 +203,7 @@ export default function AssignmentsPage() {
               const isOpen = openDropdown?.id === item.id && openDropdown.open;
 
               return (
-                <div key={item.id} className="relative rounded-xl bg-white p-5 shadow-sm" ref={isOpen ? menuRef : undefined}>
+            <div key={item.id} className="surface relative p-5 transition hover:-translate-y-0.5 hover:shadow-md" ref={isOpen ? menuRef : undefined}>
                   <div className="flex items-start justify-between gap-4">
                     <button
                       type="button"
@@ -259,7 +258,7 @@ export default function AssignmentsPage() {
           <button
             type="button"
             onClick={handleCreate}
-            className="pointer-events-auto rounded-full bg-white border border-gray-200 px-6 py-3 text-sm font-semibold text-[#1A1A1A] shadow-sm transition hover:bg-gray-50"
+            className="btn-accent pointer-events-auto rounded-xl px-5 py-3 shadow-lg sm:hidden"
           >
             + Create Assignment
           </button>
