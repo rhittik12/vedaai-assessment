@@ -1,34 +1,54 @@
-import React from 'react';
-import { ArrowLeft, Bell, ChevronDown } from 'lucide-react';
+"use client";
 
-type TopBarProps = {
-  title?: string;
-};
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { ArrowLeft, Bell, Menu, Plus } from 'lucide-react';
 
-export default function TopBar({ title = 'Dashboard' }: TopBarProps) {
+const labels: Record<string, string> = { '/overview': 'Overview', '/assignments': 'Assignments', '/assignments/create': 'New assignment' };
+
+export default function TopBar({ onMenuToggle }: { onMenuToggle: () => void }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const title = labels[pathname] ?? (pathname.includes('/result') ? 'Generated paper' : pathname.includes('/generating') ? 'Generating paper' : pathname.startsWith('/assignments/') ? 'Assignment details' : 'VedaAI');
+
   return (
-    <div className="bg-white border-b border-gray-200 px-6 h-16 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <button className="p-2 rounded-md bg-white border border-gray-100">
-          <ArrowLeft className="w-4 h-4 text-[#1A1A1A]" />
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[#e7eaf0] bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          aria-label="Open navigation menu"
+          className="grid h-9 w-9 place-items-center rounded-xl text-[#667085] transition hover:bg-[#f3f4f6] lg:hidden"
+        >
+          <Menu className="h-[18px] w-[18px]" />
         </button>
-        <div className="text-sm font-semibold">{title}</div>
-      </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <button className="p-2 rounded-md bg-white border border-gray-100">
-            <Bell className="w-5 h-5 text-[#1A1A1A]" />
+        <Link href="/overview" className="grid h-8 w-8 place-items-center rounded-lg bg-[#172033] text-xs font-black text-white lg:hidden">
+          V
+        </Link>
+
+        {pathname !== '/' ? (
+          <button onClick={() => router.back()} className="hidden h-8 w-8 place-items-center rounded-lg text-[#667085] hover:bg-[#f3f4f6] sm:grid" aria-label="Go back">
+            <ArrowLeft className="h-4 w-4" />
           </button>
-          <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-        </div>
+        ) : null}
 
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">J</div>
-          <div className="text-sm">John Doe</div>
-          <ChevronDown className="w-4 h-4 text-[#6B7280]" />
-        </div>
+        <span className="truncate text-sm font-semibold text-[#344054]">{title}</span>
       </div>
-    </div>
+
+      <div className="flex items-center gap-2">
+        <Link href="/assignments/create" className="btn-primary hidden px-3 py-2 sm:inline-flex">
+          <Plus className="h-4 w-4" />
+          <span className="hidden md:inline">Create</span>
+        </Link>
+
+        <button className="relative grid h-9 w-9 place-items-center rounded-xl text-[#667085] transition hover:bg-[#f3f4f6]" aria-label="Notifications">
+          <Bell className="h-[18px] w-[18px]" />
+          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#e96025]" />
+        </button>
+
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-[#e6eaf0] text-xs font-bold text-[#475467]">JD</span>
+      </div>
+    </header>
   );
 }

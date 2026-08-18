@@ -120,9 +120,9 @@ export default function AssignmentDetailPage() {
   const totalQuestions = useMemo(() => assignment?.questionTypes?.reduce((sum, entry) => sum + entry.count, 0) ?? 0, [assignment]);
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#F5F5F5] px-6 py-6">
+    <div className="page-shell">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-[#E5E7EB] bg-white px-5 py-4 shadow-sm">
+        <div className="surface flex flex-wrap items-center justify-between gap-3 px-5 py-4">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#6B7280]">
               <FileText className="h-4 w-4" />
@@ -153,11 +153,11 @@ export default function AssignmentDetailPage() {
         {error ? <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
 
         {loading ? (
-          <div className="rounded-3xl bg-white p-10 text-center text-sm text-[#6B7280] shadow-sm">Loading assignment details...</div>
+          <div className="surface p-10 text-center text-sm text-[#667085]">Loading assignment details…</div>
         ) : assignment ? (
           <>
             <div className="grid gap-5 lg:grid-cols-3">
-              <div className="rounded-3xl bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="surface p-6 lg:col-span-2">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
                   <div>
                     <div className="text-sm font-semibold text-[#6B7280]">Assignment ID</div>
@@ -223,7 +223,7 @@ export default function AssignmentDetailPage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="surface p-6">
                 <div className="text-sm font-semibold text-[#6B7280]">Generation status</div>
                 <div className="mt-2 text-2xl font-bold text-[#1A1A1A] capitalize">{assignment.status ?? 'pending'}</div>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">
@@ -252,7 +252,7 @@ export default function AssignmentDetailPage() {
             </div>
 
             {paper ? (
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="surface p-6">
                 <div className="border-b border-gray-200 pb-4 text-center">
                   <h2 className="text-2xl font-bold text-[#1A1A1A]">Generated Paper</h2>
                   <p className="mt-1 text-sm text-[#6B7280]">The full generated assignment is shown below.</p>

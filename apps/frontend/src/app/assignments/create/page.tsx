@@ -168,19 +168,17 @@ export default function CreateAssignmentPage() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-64px)] bg-[#F5F5F5] px-6 py-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <span className="h-3 w-3 rounded-full bg-emerald-500" />
-          <h1 className="text-3xl font-bold text-[#1A1A1A]">Create Assignment</h1>
-        </div>
-        <p className="mt-2 text-sm text-[#6B7280]">Set up a new assignment for your students</p>
+    <div className="page-shell">
+      <div>
+        <div className="page-kicker"><span className="h-2 w-2 rounded-full bg-[#e96025]" />New assessment</div>
+        <h1 className="page-title">Create an assignment</h1>
+        <p className="page-description">Add source material, define your paper structure, and let VedaAI handle the first draft.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="rounded-2xl bg-white shadow-sm">
+        <div className="surface overflow-hidden">
           {/* Progress bar */}
-          <div className="h-2 w-full rounded-t-2xl bg-[#111827]"></div>
+          <div className="h-1.5 w-full bg-[#e96025]"></div>
 
           <div className="p-6">
             {submitError ? (
@@ -189,8 +187,8 @@ export default function CreateAssignmentPage() {
               </div>
             ) : null}
 
-            <h2 className="text-lg font-semibold text-[#1A1A1A]">Assignment Details</h2>
-            <p className="mt-1 text-sm text-[#6B7280]">Basic information about your assignment</p>
+            <h2 className="text-xl font-bold tracking-[-.02em] text-[#172033]">Assignment details</h2>
+            <p className="mt-1 text-sm text-[#667085]">Start with the learning material and paper requirements.</p>
 
             {/* File Upload Zone */}
             <div className="mt-6">
@@ -200,9 +198,7 @@ export default function CreateAssignmentPage() {
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={onDrop}
-                className={`relative flex items-center justify-center rounded-xl border-2 border-dashed p-6 ${
-                  dragOver ? "border-orange-400" : "border-gray-200"
-                } bg-white`}
+                className={`relative flex items-center justify-center rounded-xl border-2 border-dashed p-7 transition ${dragOver ? "border-[#e96025] bg-[#fff8f5]" : "border-[#dce1e8] bg-[#fbfcfd]"}`}
               >
                 {!selectedFile ? (
                   <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4">
@@ -212,7 +208,7 @@ export default function CreateAssignmentPage() {
                       <div className="mt-1 text-xs text-[#9CA3AF]">JPEG, PNG, upto 10MB</div>
                     </div>
 
-                    <label className="mt-2 inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-2 text-sm font-semibold text-[#1A1A1A] shadow-sm cursor-pointer">
+                    <label className="btn-secondary mt-2 cursor-pointer">
                       Browse Files
                       <input
                         type="file"
@@ -252,7 +248,7 @@ export default function CreateAssignmentPage() {
                   type="date"
                   placeholder="DD-MM-YYYY"
                   {...register("dueDate")}
-                  className="w-full rounded-md border border-gray-200 bg-white py-2 px-3 pr-10 text-sm text-[#1A1A1A] outline-none"
+                  className="field pr-10"
                 />
                 <Calendar className="absolute right-3 h-4 w-4 text-[#6B7280]" />
               </div>
@@ -269,7 +265,7 @@ export default function CreateAssignmentPage() {
                 <button
                   type="button"
                   onClick={() => append({ type: "Multiple Choice Questions", count: 1, marks: 1 })}
-                  className="inline-flex items-center gap-2 rounded-full bg-black p-2 text-white"
+                  className="btn-primary rounded-lg p-2"
                   aria-label="Add question type"
                 >
                   <Plus className="h-4 w-4" />
@@ -291,7 +287,7 @@ export default function CreateAssignmentPage() {
                       render={({ field: f }) => (
                         <select
                           {...f}
-                          className="w-full rounded-md border border-gray-200 bg-white py-2 px-3 text-sm text-[#1A1A1A] outline-none"
+                          className="field"
                         >
                           {QUESTION_OPTIONS.map((op) => (
                             <option key={op} value={op}>
@@ -386,7 +382,7 @@ export default function CreateAssignmentPage() {
                 <textarea
                   placeholder="e.g Generate a question paper for 3 hour exam duration..."
                   {...register("additionalInfo")}
-                  className="h-28 w-full rounded-md border border-gray-200 bg-white p-3 text-sm text-[#1A1A1A] outline-none"
+                  className="field h-28 resize-y"
                 />
                 <div className="absolute right-3 bottom-3">
                   <button type="button" className="rounded-full bg-white p-2 text-[#6B7280] shadow-sm">
@@ -408,7 +404,7 @@ export default function CreateAssignmentPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className={`rounded-full bg-[#1A1A1A] px-6 py-2 text-sm font-semibold text-white ${
+                  className={`btn-accent ${
                     submitting ? "opacity-60" : "hover:opacity-95"
                   }`}
                 >

@@ -1,428 +1,259 @@
-"use client";
+import Link from 'next/link';
+import { ArrowRight, Check, ClipboardList, Download, FileText, LayoutDashboard, Upload } from 'lucide-react';
 
-import { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { format, formatDistanceToNowStrict, isValid, parseISO } from 'date-fns';
-import {
-  ArrowRight,
-  ChevronRight,
-  CheckCircle2,
-  Clock3,
-  FileText,
-  FolderOpen,
-  Plus,
-  Sparkles,
-  AlertTriangle,
-  Users2
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
+const navItems = ['Curriculum', 'Assessment', 'Insights', 'Resources'];
 
-import { type Assignment, useAppStore } from '@/store/useAppStore';
+const workflow = [
+  ['01', 'Bring the source material', 'Upload the chapter, notes, or reference image the assessment should be based on.'],
+  ['02', 'Set the paper shape', 'Choose marks, question types, difficulty, class, subject, and due date in one place.'],
+  ['03', 'Review before sharing', 'Read the generated paper, adjust it when needed, then export a clean PDF.']
+];
 
-type DashboardAssignment = Assignment & {
-  fileName?: string;
-  assignedOn?: string;
-  dueDate?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  due?: string;
-};
-
-type ActivityTone = 'green' | 'orange' | 'blue' | 'red';
-
-type ActivityItem = {
-  id: string;
-  label: string;
-  tone: ActivityTone;
-  timestamp?: string;
-};
-
-const quickActions = [
-  {
-    title: 'Create Assignment',
-    description: 'Build a new paper with AI support.',
-    icon: Plus,
-    iconClassName: 'bg-[#F9FAFB] text-[#1A1A1A]',
-    href: '/assignments/create'
-  },
-  {
-    title: "AI Teacher's Toolkit",
-    description: 'Access planning and generation tools.',
-    icon: Sparkles,
-    iconClassName: 'bg-[#FEF3E8] text-[#F26522]',
-    href: '/toolkit'
-  },
-  {
-    title: 'My Library',
-    description: 'Open your saved resources.',
-    icon: FolderOpen,
-    iconClassName: 'bg-[#F9FAFB] text-[#1A1A1A]',
-    href: '/library'
-  },
-  {
-    title: 'My Groups',
-    description: 'Manage your teaching groups.',
-    icon: Users2,
-    iconClassName: 'bg-[#EFF6FF] text-[#3B82F6]',
-    href: '/groups'
-  }
-] as const;
-
-function formatAssignmentTitle(item: DashboardAssignment): string {
-  return item.title?.trim() || item.fileName?.replace(/\.[^.]+$/, '') || 'Untitled Assignment';
-}
-
-function formatDate(value?: string): string {
-  if (!value) return '--.--.----';
-
-  const parsed = parseISO(value);
-  if (!isValid(parsed)) return '--.--.----';
-
-  return format(parsed, 'dd-MM-yyyy');
-}
-
-function formatRelativeTime(value?: string): string {
-  if (!value) return 'just now';
-
-  const parsed = parseISO(value);
-  if (!isValid(parsed)) return 'just now';
-
-  return formatDistanceToNowStrict(parsed, { addSuffix: true });
-}
-
-function getStatusMeta(status?: DashboardAssignment['status']) {
-  switch (status) {
-    case 'completed':
-      return {
-        label: 'Completed',
-        className: 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0]',
-        icon: CheckCircle2
-      };
-    case 'processing':
-      return {
-        label: 'Processing',
-        className: 'bg-[#FFF7ED] text-[#EA580C] border-[#FED7AA]',
-        icon: Clock3
-      };
-    case 'failed':
-      return {
-        label: 'Failed',
-        className: 'bg-[#FEF2F2] text-[#DC2626] border-[#FECACA]',
-        icon: AlertTriangle
-      };
-    default:
-      return {
-        label: 'Pending',
-        className: 'bg-[#F3F4F6] text-[#6B7280] border-[#E5E7EB]',
-        icon: Clock3
-      };
-  }
-}
-
-function getActivityToneClass(tone: ActivityTone) {
-  switch (tone) {
-    case 'green':
-      return 'bg-[#16A34A]';
-    case 'orange':
-      return 'bg-[#F26522]';
-    case 'blue':
-      return 'bg-[#3B82F6]';
-    case 'red':
-      return 'bg-[#DC2626]';
-    default:
-      return 'bg-[#9CA3AF]';
-  }
-}
+const paperSections = [
+  ['Section A', 'Multiple choice', '4 questions', '1 mark each'],
+  ['Section B', 'Short answer', '3 questions', '2 marks each']
+];
 
 export default function HomePage() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-  const router = useRouter();
-  const assignments = useAppStore((state) => state.assignments);
-  const setAssignments = useAppStore((state) => state.setAssignments);
-  const [dashboardAssignments, setDashboardAssignments] = useState<DashboardAssignment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadAssignments = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get<{ assignments?: DashboardAssignment[] } | DashboardAssignment[]>(`${apiUrl}/api/assignments`);
-        const items = Array.isArray(response.data) ? response.data : response.data.assignments ?? [];
-
-        if (mounted) {
-          setAssignments(
-            items.map((item) => ({
-              id: item.id,
-              title: item.title ?? formatAssignmentTitle(item),
-              fileName: item.fileName,
-              status: item.status
-            }))
-          );
-          setDashboardAssignments(items);
-          setError(null);
-        }
-      } catch {
-        if (mounted) {
-          setError('Unable to load assignments.');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadAssignments();
-
-    return () => {
-      mounted = false;
-    };
-  }, [apiUrl, setAssignments]);
-
-  const summary = useMemo(() => {
-    const totalAssignments = assignments.length;
-    const completed = assignments.filter((item) => item.status === 'completed').length;
-    const pending = assignments.filter((item) => item.status === 'pending' || item.status === 'processing').length;
-
-    return {
-      totalAssignments,
-      completed,
-      pending,
-      myGroups: 4
-    };
-  }, [assignments]);
-
-  const recentAssignments = useMemo(() => dashboardAssignments.slice(0, 3), [dashboardAssignments]);
-
-  const recentActivity = useMemo<ActivityItem[]>(() => {
-    const items: ActivityItem[] = [];
-
-    dashboardAssignments.forEach((assignment) => {
-      const baseTimestamp = assignment.createdAt ?? assignment.updatedAt;
-
-      if (baseTimestamp) {
-        items.push({
-          id: `${assignment.id}-created`,
-          label: `Created assignment ${formatAssignmentTitle(assignment)}`,
-          tone: 'orange',
-          timestamp: baseTimestamp
-        });
-      }
-
-      if (assignment.status === 'processing') {
-        items.push({
-          id: `${assignment.id}-processing`,
-          label: `Assignment ${formatAssignmentTitle(assignment)} is processing`,
-          tone: 'blue',
-          timestamp: assignment.updatedAt ?? assignment.createdAt
-        });
-      }
-
-      if (assignment.status === 'completed') {
-        items.push({
-          id: `${assignment.id}-completed`,
-          label: `Completed assignment ${formatAssignmentTitle(assignment)}`,
-          tone: 'green',
-          timestamp: assignment.updatedAt ?? assignment.createdAt
-        });
-      }
-
-      if (assignment.status === 'failed') {
-        items.push({
-          id: `${assignment.id}-failed`,
-          label: `Generation failed for ${formatAssignmentTitle(assignment)}`,
-          tone: 'red',
-          timestamp: assignment.updatedAt ?? assignment.createdAt
-        });
-      }
-    });
-
-    return items
-      .filter((item) => item.timestamp)
-      .sort((a, b) => {
-        const left = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const right = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return right - left;
-      })
-      .slice(0, 6);
-  }, [dashboardAssignments]);
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <span className="mt-3 h-3 w-3 rounded-full bg-emerald-500" />
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-[#1A1A1A]">Home</h1>
-          <p className="text-sm text-[#6B7280]">Welcome back, John Doe. Here's your teaching overview.</p>
+    <div className="min-h-screen bg-[#f2f0eb] text-[#172033]">
+      <header className="mx-auto flex h-20 max-w-[1180px] items-center justify-between px-5 sm:px-8">
+        <div className="flex items-center gap-3" aria-label="VedaAI home">
+          <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#172033] text-sm font-black text-white">V</span>
+          <span className="text-[2.05rem] font-bold tracking-[-0.06em] text-[#1b1b1b]" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            VedaAI
+          </span>
         </div>
-      </div>
 
-      <section className="rounded-[14px] border-[0.5px] border-[#e5e5e5] bg-white px-6 py-5 shadow-sm sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-[#1A1A1A]">Good morning, John Doe 👋</h2>
-            <p className="mt-2 max-w-2xl text-sm text-[#6B7280]">
-              You have 3 assignments due this week. Let AI help you create them faster.
+        <nav className="hidden items-center gap-8 text-sm font-medium text-[#4d4d4d] md:flex">
+          {navItems.map((item) => (
+            <a key={item} href="#" className="transition hover:text-[#172033]">
+              {item}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <Link href="/overview" className="hidden rounded-full border border-[#d7d0c7] bg-transparent px-4 py-2 text-sm font-medium text-[#172033] md:inline-flex">
+            Sign In
+          </Link>
+          <Link href="/overview" className="inline-flex items-center gap-2 rounded-full bg-[#d95d2a] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(217,93,42,0.22)] transition hover:bg-[#c95020]">
+            Start for free
+          </Link>
+        </div>
+      </header>
+
+      <main>
+        <section className="mx-auto max-w-[1180px] px-5 pb-14 pt-6 sm:px-8 lg:pb-20 lg:pt-10">
+          <div className="flex flex-col items-center text-center">
+            <h1 className="max-w-[950px] text-5xl font-medium leading-[0.98] tracking-[-0.065em] text-[#1b1b1b] sm:text-6xl lg:text-[6.2rem]">
+              Empowering Educators,
+              <span className="mt-2 block italic text-[#d05b32]" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                Not Replacing Them.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-[760px] text-base leading-7 text-[#4d4d4d] sm:text-lg">
+              A sophisticated toolkit designed to respect your pedagogy. Realign hours of prep time with intelligent, curriculum-aligned workflows.
             </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/overview" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d95d2a] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_22px_rgba(217,93,42,0.2)] transition hover:bg-[#c95020]">
+                Explore Workflows
+              </Link>
+              <Link href="#methodology" className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d7d0c7] bg-[#f7f5f2] px-6 py-3.5 text-sm font-semibold text-[#172033] transition hover:bg-white">
+                View Methodology
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          {
-            label: 'Total Assignments',
-            value: summary.totalAssignments,
-            subtext: 'All assignments in your workspace',
-            icon: FileText,
-            iconClassName: 'bg-[#F3F4F6] text-[#6B7280]'
-          },
-          {
-            label: 'Completed',
-            value: summary.completed,
-            subtext: 'Ready and finished',
-            icon: CheckCircle2,
-            iconClassName: 'bg-[#F0FDF4] text-[#16A34A]'
-          },
-          {
-            label: 'Pending',
-            value: summary.pending,
-            subtext: 'Queued or being processed',
-            icon: Clock3,
-            iconClassName: 'bg-[#FFF7ED] text-[#EA580C]'
-          },
-          {
-            label: 'My Groups',
-            value: summary.myGroups,
-            subtext: 'Current teaching groups',
-            icon: Users2,
-            iconClassName: 'bg-[#EFF6FF] text-[#3B82F6]'
-          }
-        ].map((stat) => {
-          const Icon = stat.icon;
-
-          return (
-            <article key={stat.label} className="rounded-[12px] border-[0.5px] border-[#e5e5e5] bg-white px-4 py-4 shadow-sm">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.iconClassName}`}>
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="mt-4 text-xs font-medium text-[#6B7280]">{stat.label}</div>
-              <div className="mt-1 text-3xl font-bold tracking-tight text-[#1A1A1A]">{stat.value}</div>
-              <div className="mt-1 text-xs text-[#9CA3AF]">{stat.subtext}</div>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-3">
-          <article className="rounded-[14px] border-[0.5px] border-[#e5e5e5] bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <h3 className="text-lg font-bold text-[#1A1A1A]">Recent Assignments</h3>
-              <button
-                type="button"
-                onClick={() => router.push('/assignments')}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[#F26522]"
-              >
-                View all <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {recentAssignments.length > 0 ? (
-                recentAssignments.map((assignment) => {
-                  const statusMeta = getStatusMeta(assignment.status ?? 'pending');
-                  const StatusIcon = statusMeta.icon;
-
-                  return (
-                    <article key={assignment.id} className="rounded-[10px] border-[0.5px] border-[#e5e5e5] bg-white px-4 py-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/assignments/${assignment.id}`)}
-                          className="text-left text-sm font-bold text-[#1A1A1A] underline underline-offset-4"
-                        >
-                          {formatAssignmentTitle(assignment)}
-                        </button>
-
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusMeta.className}`}>
-                          <StatusIcon className="h-3 w-3" />
-                          {statusMeta.label}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 flex flex-col gap-1 text-[11.5px] text-[#6B7280] sm:flex-row sm:items-center sm:justify-between">
-                        <span>Assigned on : {formatDate(assignment.assignedOn ?? assignment.createdAt)}</span>
-                        <span>Due : {formatDate(assignment.dueDate ?? assignment.due)}</span>
-                      </div>
-                    </article>
-                  );
-                })
-              ) : (
-                <div className="rounded-[10px] border-[0.5px] border-[#e5e5e5] bg-white px-4 py-4 text-sm text-[#6B7280]">
-                  No assignments yet. Create your first one.
+          <div className="mt-12 overflow-hidden rounded-[26px] border border-[#d9d3cb] bg-[#eef1f2] p-3 shadow-[0_20px_50px_rgba(19,25,34,0.08)] sm:p-5">
+            <div className="rounded-[22px] border border-[#d7d0c7] bg-[#f5f5f3] p-4 shadow-inner sm:p-6">
+              <div className="mb-5 flex items-center justify-between gap-4 border-b border-[#d7d0c7] pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-8 w-8 place-items-center rounded-md bg-[#15253e] text-[10px] font-black text-white">V</span>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b7b7b]">Curriculum Planning Hub</div>
+                    <div className="mt-1 text-sm font-semibold text-[#172033]">Topic / Unit Planning</div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </article>
+                <div className="flex items-center gap-2 text-xs text-[#5a6470]">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#d95d2a]" />
+                  <span>Live</span>
+                </div>
+              </div>
 
-          <article className="rounded-[14px] border-[0.5px] border-[#e5e5e5] bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-[#1A1A1A]">Recent Activity</h3>
+              <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+                <aside className="rounded-xl border border-[#d7d0c7] bg-[#f1efe9] p-3">
+                  <div className="space-y-3 text-xs text-[#4d5561]">
+                    {['Dashboard', 'Lesson Plans', 'Assessment', 'Resources', 'Analytics'].map((item, index) => (
+                      <div key={item} className={`flex items-center gap-2 rounded-md px-2 py-2 ${index === 2 ? 'bg-white font-semibold text-[#172033] shadow-sm' : ''}`}>
+                        <span className="h-2 w-2 rounded-full bg-[#d95d2a] opacity-80" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </aside>
 
-            <div className="mt-4 divide-y divide-[#e5e5e5]">
-              {recentActivity.length > 0 ? (
-                recentActivity.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                    <span className={`mt-[6px] h-[7px] w-[7px] rounded-full ${getActivityToneClass(item.tone)}`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm text-[#1A1A1A]">{item.label}</div>
-                      <div className="mt-1 text-xs text-[#9CA3AF]">{formatRelativeTime(item.timestamp)}</div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-[#d7d0c7] bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7b7b7b]">Topic map</span>
+                      <span className="rounded-full bg-[#f8e8df] px-2 py-1 text-[10px] font-semibold text-[#c45a2a]">3 modules</span>
+                    </div>
+                    <div className="space-y-3 text-[11px] text-[#51606f]">
+                      {['Learning Objectives', 'Activities', 'Concept Check'].map((label) => (
+                        <div key={label} className="rounded-md border border-[#e7e1d9] p-2.5">
+                          {label}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="py-3 text-sm text-[#6B7280]">No recent activity yet.</div>
-              )}
+
+                  <div className="rounded-xl border border-[#d7d0c7] bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7b7b7b]">Assessment</span>
+                      <span className="text-[10px] font-semibold text-[#3d9b5d]">Live</span>
+                    </div>
+                    <div className="space-y-3 text-[11px] text-[#51606f]">
+                      {['Objective questions', 'Short answer', 'Case study'].map((label, idx) => (
+                        <div key={label} className="flex items-center justify-between rounded-md border border-[#e7e1d9] p-2.5">
+                          <span>{label}</span>
+                          <span className={`h-2.5 w-2.5 rounded-full ${idx === 0 ? 'bg-[#d95d2a]' : idx === 1 ? 'bg-[#ddbb5d]' : 'bg-[#76a2d8]'}`} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </article>
-        </div>
-
-        <article className="rounded-[14px] border-[0.5px] border-[#e5e5e5] bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-bold text-[#1A1A1A]">Quick Actions</h3>
-
-          <div className="mt-4 space-y-3">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-
-              return (
-                <button
-                  key={action.title}
-                  type="button"
-                  onClick={() => router.push(action.href)}
-                  className="flex w-full items-center gap-3 rounded-[10px] border-[0.5px] border-[#e5e5e5] bg-white px-4 py-[13px] text-left transition hover:bg-[#F9F9F9]"
-                >
-                  <div className={`flex h-[34px] w-[34px] items-center justify-center rounded-lg ${action.iconClassName}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-[#1A1A1A]">{action.title}</div>
-                    <div className="text-xs text-[#6B7280]">{action.description}</div>
-                  </div>
-
-                  <ChevronRight className="h-4 w-4 text-[#9CA3AF]" />
-                </button>
-              );
-            })}
           </div>
-        </article>
-      </section>
+        </section>
 
-      {loading ? <div className="text-sm text-[#9CA3AF]">Loading your teaching overview...</div> : null}
-      {error ? <div className="text-sm text-red-600">{error}</div> : null}
+        <section className="border-y border-[#d8d1c9] bg-[#f4f1ec]">
+          <div className="mx-auto max-w-[1180px] px-5 py-7 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b6f78] sm:px-8">
+            Trusted by academic institutions
+          </div>
+          <div className="mx-auto grid max-w-[1180px] grid-cols-2 gap-6 px-5 pb-10 text-center text-xl font-semibold text-[#2a2d34] sm:grid-cols-4 sm:px-8">
+            {['University A', 'Institute B', 'Academy C', 'College D'].map((item) => (
+              <div key={item} className="py-3 text-[#2b2a2a] opacity-80">{item}</div>
+            ))}
+          </div>
+        </section>
+
+        <section id="methodology" className="mx-auto max-w-[1180px] px-5 py-20 sm:px-8">
+          <div className="text-center">
+            <h2 className="text-4xl font-semibold tracking-[-0.05em] text-[#1d1d1d] sm:text-5xl">The Human-in-the-Loop</h2>
+          </div>
+
+          <p className="mx-auto mt-5 max-w-[760px] text-center text-lg leading-8 text-[#4f5a69]">
+            Move beyond generic chatbots. VedaAI provides structured, pedagogical tools tailored for academic rigor. Create assessments, differentiate instruction, and analyze texts within a dedicated workspace where you remain in control.
+          </p>
+
+          <div className="mt-12 grid gap-8 md:grid-cols-3">
+            <div className="rounded-[18px] border border-[#d7d0c7] bg-[#f7f5f2] p-7">
+              <div className="mb-4 inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.12em] text-[#d05b32]">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f6dfd2] text-[11px] font-bold text-[#d05b32]">1</span>
+                Source-Based Generation
+              </div>
+              <h3 className="text-2xl font-semibold tracking-[-0.04em] text-[#172033]">Grounded output</h3>
+              <p className="mt-4 text-base leading-7 text-[#4f5a69]">
+                Ground your questions in the exact source material uploaded and aligned to your syllabus goals.
+              </p>
+            </div>
+
+            <div className="rounded-[18px] border border-[#d7d0c7] bg-[#f7f5f2] p-7">
+              <div className="mb-4 inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.12em] text-[#d05b32]">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f6dfd2] text-[11px] font-bold text-[#d05b32]">2</span>
+                Generated Assessment
+              </div>
+              <h3 className="text-2xl font-semibold tracking-[-0.04em] text-[#172033]">Built for review</h3>
+              <p className="mt-4 text-base leading-7 text-[#4f5a69]">
+                Review and adjust a draft that has already been structured by standards, topic, marks, and difficulty.
+              </p>
+            </div>
+
+            <div className="rounded-[18px] border border-[#d7d0c7] bg-[#f7f5f2] p-7">
+              <div className="mb-4 inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.12em] text-[#d05b32]">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f6dfd2] text-[11px] font-bold text-[#d05b32]">3</span>
+                Pedagogical Fine-Tuning
+              </div>
+              <h3 className="text-2xl font-semibold tracking-[-0.04em] text-[#172033]">Teacher-led control</h3>
+              <p className="mt-4 text-base leading-7 text-[#4f5a69]">
+                Add your classroom context, adjust the level, and keep the final paper aligned to your teaching approach.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1180px] px-5 pb-20 sm:px-8">
+          <div className="rounded-[28px] bg-[#f7f5f2] p-8 shadow-[0_16px_32px_rgba(0,0,0,0.03)] sm:p-12">
+            <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#d7d0c7] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#d05b32]">
+                  Grade 10 history
+                </div>
+                <h3 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-[#172033]">Ready to refine your practice?</h3>
+                <p className="mt-5 max-w-[480px] text-lg leading-8 text-[#4f5a69]">
+                  Join thousands of educators using VedaAI to elevate their curriculum planning and focus on what matters most: teaching.
+                </p>
+                <Link href="/overview" className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-[#d95d2a] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_22px_rgba(217,93,42,0.2)] transition hover:bg-[#c95020]">
+                  Get Started Now
+                </Link>
+              </div>
+
+              <div className="rounded-[22px] border border-[#d7d0c7] bg-white p-6 shadow-sm">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7b7b7b]">Generated assessment</p>
+                    <h4 className="mt-2 text-xl font-semibold text-[#172033]">Industrial Revolution in Britain</h4>
+                  </div>
+                  <span className="rounded-full bg-[#f7e7de] px-2.5 py-1 text-[10px] font-semibold text-[#c45a2a]">1/3</span>
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-[#ece5df] bg-[#faf8f6] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-[#4f5a69]">Q1</span>
+                    <span className="text-sm font-medium text-[#172033]">Which factor most likely contributed to Britain&apos;s industrial growth?</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#4f5a69]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#d95d2a]" />
+                    <span>Correct answer: abundance of coal and navigable rivers</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {paperSections.map(([section, type, count, marks]) => (
+                    <div key={section} className="rounded-xl border border-[#ece5df] bg-[#faf8f6] p-3.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7b7b7b]">{section}</span>
+                        <span className="text-[10px] font-semibold text-[#d05b32]">{marks}</span>
+                      </div>
+                      <p className="mt-2 text-base font-medium text-[#172033]">{type}</p>
+                      <p className="mt-1 text-xs text-[#4f5a69]">{count}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer className="border-t border-[#d8d1c9] bg-[#f2f0eb] py-8">
+          <div className="mx-auto max-w-[1180px] px-5 text-center sm:px-8">
+            <div className="text-[2.2rem] font-bold tracking-[-0.05em] text-[#1b1b1b]" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              VedaAI
+            </div>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-5 text-xs text-[#58606d]">
+              <span>Privacy Policy</span>
+              <span>Terms of Service</span>
+              <span>Accessibility</span>
+              <span>Contact Support</span>
+              <span>Academics Integrity</span>
+            </div>
+            <div className="mt-6 text-xs text-[#7a7b7b]">© 2024 VedaAI. Built for the modern educator.</div>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }

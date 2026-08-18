@@ -2,23 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
+:root { color-scheme: light; }
+html { scroll-behavior: smooth; }
+body { min-height: 100vh; background: #f7f8fa; color: #172033; }
+* { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+::selection { background: #ffe2d1; color: #172033; }
+
+@layer base {
+  :focus-visible { outline: 3px solid rgba(234, 96, 37, .35); outline-offset: 2px; }
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  min-height: 100vh;
-  color: #f8fafc;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-::selection {
-  background: rgba(56, 189, 248, 0.28);
+@layer components {
+  .page-shell { @apply mx-auto w-full max-w-[1440px] space-y-7; }
+  .page-kicker { @apply inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-[#d85b24]; }
+  .page-title { @apply mt-2 text-3xl font-bold tracking-[-0.035em] text-[#172033] sm:text-[2.15rem]; }
+  .page-description { @apply mt-2 max-w-2xl text-sm leading-6 text-[#667085]; }
+  .surface { @apply rounded-2xl border border-[#e7eaf0] bg-white shadow-[0_1px_2px_rgba(16,24,40,.04),0_1px_3px_rgba(16,24,40,.03)]; }
+  .surface-muted { @apply rounded-xl border border-[#edf0f4] bg-[#fbfcfd]; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[#172033] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2a364c] active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-accent { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[#e96025] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#cf4e18] active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#dce1e8] bg-white px-4 py-2.5 text-sm font-semibold text-[#344054] transition hover:bg-[#f7f8fa] active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50; }
+  .field { @apply w-full rounded-xl border border-[#dce1e8] bg-white px-3.5 py-2.5 text-sm text-[#172033] shadow-sm outline-none transition placeholder:text-[#98a2b3] hover:border-[#cbd2dc] focus:border-[#e96025] focus:ring-4 focus:ring-[#fff0ea]; }
+  .status-pill { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold; }
 }
