@@ -32,7 +32,7 @@ export default function WelcomePage() {
           </span>
         </Link>
 
-        <Link href="/" className="btn-primary px-3.5 py-2">
+        <Link href="/overview" className="btn-primary px-3.5 py-2">
           <LayoutDashboard className="h-4 w-4" />
           Open workspace
         </Link>
@@ -58,7 +58,7 @@ export default function WelcomePage() {
                   Create an assessment
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/" className="btn-secondary px-5 py-3">
+                <Link href="/overview" className="btn-secondary px-5 py-3">
                   View workspace
                 </Link>
               </div>
